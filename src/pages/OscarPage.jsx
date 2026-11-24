@@ -60,8 +60,8 @@ export default function OscarPage() {
         {/* my crew: hidden for participants while the voting is on */}
         {hideCrew ? (
           <section className="box shadow-b8 p-6 sm:p-8 bg-ink text-white flex flex-col gap-2">
-            <div className="font-mono text-xs font-bold uppercase text-sun">{status === 'open' ? 'Voting is open' : 'Voting is closed'}</div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold uppercase">🗳 Time to vote!</h2>
+            <div className="font-mono text-xs font-bold uppercase text-sun">{status === 'open' ? 'Nominations are open' : 'Voting opens soon'}</div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold uppercase">🗳 Get ready to vote!</h2>
             <p className="text-xl sm:text-2xl font-extrabold uppercase text-neon">Who will be the winner?</p>
           </section>
         ) : (
