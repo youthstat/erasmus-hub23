@@ -22,6 +22,7 @@ export default function OscarPage() {
   const sentCount = teams.filter((t) => t.nominated).length;
   const full = config.expectedTeams > 0 && sentCount >= config.expectedTeams && !myTeam?.nominated;
   const locked = config.intake === 'closed' || full;
+  const NOMINATED_MSG = 'You have already nominated your participants. The voting will open soon!';
   const lockReason = config.intake === 'closed' ? 'The organizers have closed the intake of crews.' : 'All expected crews have already been sent.';
 
   return (
@@ -60,8 +61,8 @@ export default function OscarPage() {
         {/* my crew: hidden for participants while the voting is on */}
         {hideCrew ? (
           <section className="box shadow-b8 p-6 sm:p-8 bg-ink text-white flex flex-col gap-2">
-            <div className="font-mono text-xs font-bold uppercase text-sun">{status === 'open' ? 'Nominations are open' : 'Voting opens soon'}</div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold uppercase">🗳 Get ready to vote!</h2>
+            <div className="font-mono text-xs font-bold uppercase text-sun">{status === 'open' ? 'Voting is open' : 'Voting is closed'}</div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold uppercase">🗳 Time to vote!</h2>
             <p className="text-xl sm:text-2xl font-extrabold uppercase text-neon">Who will be the winner?</p>
           </section>
         ) : (
@@ -95,9 +96,9 @@ export default function OscarPage() {
                   <div className="font-mono text-xs font-bold uppercase">Voting nominations</div>
                   <p className="text-sm font-medium">
                     {frozen
-                      ? '✓ Your crew has been sent to the voting. Nothing can be changed now — only the organizers can return it to editing.'
+                      ? `✓ ${NOMINATED_MSG}`
                       : myTeam.nominated
-                        ? '✓ This crew has been sent to the voting (you can still change it as an admin).'
+                        ? `✓ ${NOMINATED_MSG} (you can still change it as an admin).`
                         : 'When the film is ready, send your crew to the voting: choose who is nominated in which category. After you send it, nothing can be changed.'}
                     {!myTeam.nominated && locked && ` ${lockReason}`}
                     {!myTeam.nominated && !locked && config.expectedTeams > 0 && ` Crews sent: ${sentCount} of ${config.expectedTeams}.`}
@@ -120,7 +121,7 @@ export default function OscarPage() {
         {/* voting */}
         <section className={`box shadow-b8 p-6 flex flex-col gap-3 items-start ${status === 'open' ? 'bg-neon' : 'bg-white'}`}>
           <h2 className="text-2xl font-extrabold uppercase">The Oscar ballot</h2>
-          {status === 'draft' && <p className="font-bold">The voting is not open yet. The organizers will open it after the screening.</p>}
+          {status === 'draft' && <p className="font-bold">{myTeam?.nominated ? NOMINATED_MSG : 'The voting is not open yet. The organizers will open it after the screening.'}</p>}
           {status === 'closed' && <p className="font-bold">The voting is closed. The winners will be announced at the gala.</p>}
           {status === 'open' && (hasVoted
             ? <p className="font-bold">✓ You have already voted. Thank you for filling in the form!</p>

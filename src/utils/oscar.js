@@ -13,15 +13,30 @@ export const withDefaults = (cfg) => ({
   questions: cfg?.questions?.length ? cfg.questions : OSCAR_QUESTIONS,
 });
 
+/* Nominations of a crew for one question can be stored in two shapes: a list of people, or true (the whole film/crew).
+   The admin can change the type of a question after crews have already sent their nominations, so both shapes
+   must be understood in both kinds of question:
+   - person question: a list is used as it is; true = the whole cast
+   - film question:   true, or any non-empty list = the crew is a candidate */
+export const nominatedPeople = (t, q) => {
+  const v = t.nominations?.[q.id];
+  if (Array.isArray(v)) return v.filter((u) => t.memberIds?.includes(u));
+  return v === true ? [...(t.memberIds || [])] : [];
+};
+export const nominatedFilm = (t, q) => {
+  const v = t.nominations?.[q.id];
+  return v === true || (Array.isArray(v) && nominatedPeople(t, q).length > 0);
+};
+
 // candidates of one question: only crews that have sent their nominations to the voting
 export function optionsFor(q, teams, nameOf) {
   const sent = teams.filter((t) => t.nominated);
   if (q.target === 'person') {
-    return sent.flatMap((t) => (t.nominations?.[q.id] || []).filter((u) => t.memberIds?.includes(u))
+    return sent.flatMap((t) => nominatedPeople(t, q)
       .map((u) => ({ id: `${t.id}|${u}`, label: nameOf(u), sub: t.title, film: t.title, cover: t.cover || '' })));
   }
   if (q.target === 'film') {
-    return sent.filter((t) => t.nominations?.[q.id] === true)
+    return sent.filter((t) => nominatedFilm(t, q))
       .map((t) => ({ id: t.id, label: t.title, sub: `Director: ${nameOf(t.directorId)}`, film: t.title, cover: t.cover || '' }));
   }
   return [];

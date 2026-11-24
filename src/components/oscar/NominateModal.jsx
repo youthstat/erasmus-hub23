@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useOscar } from '../../hooks/useOscar.js';
 import { useApp } from '../../context/AppContext.jsx';
 import { nominateTeam, returnToEditing } from '../../firebase/oscar.js';
+import { nominatedPeople, nominatedFilm } from '../../utils/oscar.js';
 import { fileToCover } from '../../utils/image.js';
 import ModalShell from '../modals/ModalShell.jsx';
 
@@ -12,7 +13,7 @@ export default function NominateModal({ team, questions, onClose }) {
   const asked = questions.filter((q) => q.target === 'person' || q.target === 'film');
   const [sel, setSel] = useState(() => {
     const init = {};
-    asked.forEach((q) => { const v = team.nominations?.[q.id]; init[q.id] = q.target === 'film' ? v === true : (Array.isArray(v) ? v : []); });
+    asked.forEach((q) => { init[q.id] = q.target === 'film' ? nominatedFilm(team, q) : nominatedPeople(team, q); });
     return init;
   });
   const [cover, setCover] = useState(team.cover || '');
