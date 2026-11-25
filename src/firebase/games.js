@@ -13,7 +13,7 @@ import { KILL_STORY_MAX, SF_PROFILE_BONUS, SF_PROFILE_MIN, SF_PROFILE_MAX, SF_PR
   Transactions on these documents guarantee that one name is never given to two players.
 */
 export const GAMES = {
-  sf: { players: 'sfPlayers', claims: 'sfClaims', chat: 'sfQuestions', daily: 'sfDaily' },   // chat + daily counters are cleared with the game
+  sf: { players: 'sfPlayers', claims: 'sfClaims', chat: 'sfQuestions', daily: 'sfDaily', wardChat: 'sfWardMessages', wardDaily: 'sfWardDaily' },   // chat + daily counters are cleared with the game
   kg: { players: 'kgPlayers', claims: 'kgClaims', itemClaims: 'kgItemClaims' },
 };
 
@@ -59,7 +59,8 @@ export async function saveSfProfile(userId, input) {
   const clean = {};
   SF_PROFILE_FIELDS.forEach((f) => { clean[f.id] = String(input[f.id] || '').trim().slice(0, SF_PROFILE_MAX); });
   clean.photo = typeof input.photo === 'string' && input.photo.startsWith('data:image/') && input.photo.length < 300000 ? input.photo : '';
-  const complete = sfProgress(clean).complete;
+  const hasContent = SF_PROFILE_FIELDS.some((f) => clean[f.id].length > 0) || !!clean.photo;
+  if (!hasContent) throw fail('empty', 'Fill in at least one section of your profile before saving.');
   const pRef = doc(db, GAMES.sf.players, userId);
   const uRef = doc(db, 'users', userId);
   return runTransaction(db, async (tx) => {
@@ -67,7 +68,7 @@ export async function saveSfProfile(userId, input) {
     if (!p.exists() || !isJoined(p.data())) throw fail('missing', 'Join the Secret friend game first.');
     const patch = { profile: clean, profileUpdatedAt: serverTimestamp() };
     let bonus = false;
-    if (complete && !p.data().profileBonus && u.exists()) {
+    if (!p.data().profileBonus && u.exists()) {
       bonus = true;
       patch.profileBonus = true;
       tx.update(uRef, { score: increment(SF_PROFILE_BONUS) });

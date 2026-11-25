@@ -5,7 +5,7 @@ import { Avatar, Win, FieldCard } from '../components/games/SfParts.jsx';
 import { ChatToWard, ChatRules } from '../components/games/SecretChat.jsx';
 import { useApp } from '../context/AppContext.jsx';
 import { useGame } from '../hooks/useGame.js';
-import { isJoined, sfProgress } from '../firebase/games.js';
+import { isJoined } from '../firebase/games.js';
 import { SF_PROFILE_FIELDS } from '../config/settings.js';
 
 // The dossier of the person I am secret friend of: what they wrote about themselves + the secret chat with them.
@@ -16,7 +16,6 @@ export default function SfBuddyPage() {
   const ward = me?.targetId ? byId.get(me.targetId) : null;
   const wp = ward?.profile || {};
   const name = me?.targetId ? nameOf(me.targetId) : '';
-  const progress = sfProgress(wp);
   const legacy = ward && (ward.likes || ward.dislikes);
 
   return (
@@ -44,7 +43,7 @@ export default function SfBuddyPage() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-2 font-mono text-xs font-bold uppercase">
-                    <span>Profile of {name}</span><span className="text-mute">{progress.done} of {progress.total} sections filled in</span>
+                    <span>Profile of {name}</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {SF_PROFILE_FIELDS.map((f) => <FieldCard key={f.id} f={f} value={wp[f.id]} empty={`${name} has not written this yet — ask in the chat.`} />)}

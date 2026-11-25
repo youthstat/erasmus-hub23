@@ -1,5 +1,5 @@
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy,
+  collection, doc, addDoc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy,
   runTransaction, serverTimestamp, increment, limit,
 } from 'firebase/firestore';
 import { db } from './config.js';
@@ -9,6 +9,11 @@ const noop = () => {};
 const fail = (code, message) => Object.assign(new Error(message), { code });
 
 export const SEED_HEIST_TASKS = [
+  {
+    title: 'Group Activity & Photo',
+    details: 'Lead an activity for the whole group, take a group photo together, and upload it here as proof!',
+    active: true,
+  },
   {
     title: 'Invisible Sunglasses Selfie',
     details: 'Take a selfie wearing someone else’s sunglasses or hat without them noticing (or right before they catch you).',
@@ -50,6 +55,19 @@ export const saveHeistTask = (data, id) =>
 export const removeHeistTask = (id) => deleteDoc(doc(db, 'heistTasks', id));
 
 export const seedHeistTasks = () => Promise.all(SEED_HEIST_TASKS.map((t) => saveHeistTask(t)));
+
+export async function ensureDefaultHeistTasks() {
+  const flagRef = doc(db, 'settings', 'heistDefaults');
+  const flagSnap = await getDoc(flagRef);
+  if (flagSnap.exists() && flagSnap.data()?.groupActivitySeeded) return;
+  await setDoc(doc(db, 'heistTasks', 'group_activity_photo'), {
+    title: 'Group Activity & Photo',
+    details: 'Lead an activity for the whole group, take a group photo together, and upload it here as proof!',
+    active: true,
+    createdAt: serverTimestamp(),
+  }, { merge: true });
+  await setDoc(flagRef, { groupActivitySeeded: true }, { merge: true });
+}
 
 /* ---------- gift points (instant, anonymous to recipient) ---------- */
 export async function giftPoints(senderId, recipientId, rawAmount) {

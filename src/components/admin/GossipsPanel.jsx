@@ -27,7 +27,7 @@ export default function GossipsPanel() {
       <div className="bg-sun border-b-[3px] border-ink px-4 py-3 font-mono font-bold uppercase flex flex-wrap items-center justify-between gap-3">
         <span>🐭 Gossips for Rattie Patty · {gossips.length}</span>
         <span className="flex items-center gap-2">
-          <span className="tag bg-white normal-case">authors visible to admins only</span>
+          <span className="tag bg-white normal-case">all gossips are anonymous</span>
           <button className="tag bg-hot text-white disabled:opacity-40" disabled={!gossips.length} onClick={clearAll}>🗑 Clear all</button>
         </span>
       </div>
@@ -51,7 +51,7 @@ export default function GossipsPanel() {
           <div key={g.id} className="p-4 flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="whitespace-pre-line break-words">“{g.text}”</p>
-              <div className="mt-1 font-mono text-xs text-mute">from {g.anonymous ? <b className="text-ink">Anonymous 🤫</b> : <b className="text-ink">{g.userName || 'Unknown'}</b>} · {when(g)} · {g.words} words{g.via === 'board' ? ' · written on the Gossip board' : ''}</div>
+              <div className="mt-1 font-mono text-xs text-mute"><b className="text-ink">Anonymous 🤫</b> · {when(g)} · {g.words} words{g.via === 'board' ? ' · written on the Gossip board' : ''}</div>
             </div>
             <span className="flex items-center gap-2 shrink-0">
               {g.points > 0 ? <span className="tag bg-neon">+{g.points} PTS</span> : <span className="tag bg-white">{g.via === 'board' ? 'FROM BOARD' : 'NO PTS'}</span>}

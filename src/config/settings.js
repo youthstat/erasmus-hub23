@@ -6,6 +6,7 @@
 /* ---------- Паролі та посилання ---------- */
 export const ADMIN_PASSWORD = '1234';                           // пароль адміністратора
 export const PADLET_URL = 'https://padlet.com/auth/login';      // посилання на Padlet (Daily reflection)
+export const MEDIA_UPLOAD_URL = '';                             // посилання на папку для завантаження фото та відео
 
 /* ---------- Контакти організаторів (сторінка "Ask the Team") ---------- */
 export const CONTACTS = {
@@ -102,7 +103,7 @@ export const HOME_SECTIONS = [
   { id: 'killer-game', title: 'Killer game', kind: 'card' },
   { id: 'oscar', title: 'Oscar Night', kind: 'card' },
   { id: 'punishment', title: 'Punishment box', kind: 'card' },
-  { id: 'mouse-run', title: 'Rattie Run (game)', kind: 'card' },
+  { id: 'mouse-run', title: 'Rattie 2048 (game)', kind: 'card' },
   { id: 'ask', title: 'Ask the Team', kind: 'card' },
   { id: 'gossips', title: 'Gossip board', kind: 'card' },
   { id: 'reflection', title: 'Daily reflection', kind: 'card' },
@@ -110,6 +111,7 @@ export const HOME_SECTIONS = [
 
 /* ---------- Secret friend chat ---------- */
 export const SF_DAILY_QUESTIONS = 3;     // скільки питань за день сікрет френд може надіслати тому, кому дарує
+export const SF_WARD_DAILY_MESSAGES = 5; // скільки повідомлень за день учасник може надіслати своєму сікрет френду першим
 export const SF_QUESTION_MAX = 200;
 export const SF_ANSWER_MAX = 300;
 

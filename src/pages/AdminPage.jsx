@@ -11,6 +11,7 @@ import GamesAdminPanel from '../components/admin/GamesAdminPanel.jsx';
 import PunishmentAdminPanel from '../components/admin/PunishmentAdminPanel.jsx';
 import HomeControlPanel from '../components/admin/HomeControlPanel.jsx';
 import HeistAdminPanel from '../components/admin/HeistAdminPanel.jsx';
+import Game2048AdminPanel from '../components/admin/Game2048AdminPanel.jsx';
 import AdminBlock from '../components/admin/AdminBlock.jsx';
 import LeaderboardTable from '../components/leaderboard/LeaderboardTable.jsx';
 import { useApp } from '../context/AppContext.jsx';
@@ -48,6 +49,7 @@ export default function AdminPage() {
         {allMissions.length === 0 && <button className="btn bg-white self-start" onClick={seedMissions}>Load demo missions</button>}
       </> },
     { id: 'games', title: 'Games: who plays, links, contracts', node: <GamesAdminPanel /> },
+    { id: 'game2048', title: 'Rattie 2048: Top 3 & prizes', node: <Game2048AdminPanel /> },
     { id: 'leaderboard', title: 'Participants & leaderboard', node: <LeaderboardTable /> },
   ];
   const toggle = (id) => setHidden((h) => ({ ...h, [id]: !h[id] }));

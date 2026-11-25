@@ -2,22 +2,22 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
+// Конфіг Firebase прямо в коді (без .env). Ці ключі — публічні ідентифікатори веб-застосунку,
+// захист даних забезпечують правила Firestore (firestore.rules), а не секретність ключа.
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || '',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || '',
+  apiKey: 'AIzaSyAYo6e6ByHAVvYlDHXciH3-6mmhLgQNDok',
+  authDomain: 'erasmus-2f278.firebaseapp.com',
+  databaseURL: 'https://erasmus-2f278-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: 'erasmus-2f278',
+  storageBucket: 'erasmus-2f278.firebasestorage.app',
+  messagingSenderId: '662037690308',
+  appId: '1:662037690308:web:610308b3bbced4bac7d691',
+  measurementId: 'G-BDT64NC9Y4',
 };
 
-export const firebaseConfigured = Boolean(
-  firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId
-);
+export const firebaseConfigured = true;
 
-const app = firebaseConfigured ? initializeApp(firebaseConfig) : null;
+const app = initializeApp(firebaseConfig);
 
-export const db = app ? getFirestore(app) : null;
-export const auth = app ? getAuth(app) : null;
+export const db = getFirestore(app);
+export const auth = getAuth(app);

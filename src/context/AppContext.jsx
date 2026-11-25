@@ -43,6 +43,7 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (!uid) return;
     const onErr = (e) => setError(e.message);
+    rattie.ensureDefaultHeistTasks().catch(() => {});
     const offs = [
       api.subscribeMissions(setMissions, onErr),
       api.subscribeUsers(setUsers, onErr),

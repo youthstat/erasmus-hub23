@@ -92,11 +92,11 @@ export default function GossipBoardPage() {
         )}
 
         {access?.open && !canRead && (
-          <form onSubmit={unlock} className="box shadow-b8 p-6 flex flex-col gap-3 max-w-md">
+          <form onSubmit={unlock} className="box shadow-b8 p-6 flex flex-col gap-3 max-w-md w-full mx-auto text-center">
             <p className="font-bold">The board is open for those who have the password from the organizers.</p>
-            <input className="input" type="password" autoFocus placeholder="Password" value={pw} onChange={(e) => { setPw(e.target.value); setMsg(''); }} />
+            <input className="input text-center" type="password" autoFocus placeholder="Password" value={pw} onChange={(e) => { setPw(e.target.value); setMsg(''); }} />
             {msg && <p className="font-mono text-sm font-bold text-hot">{msg}</p>}
-            <button className="btn bg-neon self-start" disabled={!pw}>Open the board</button>
+            <button className="btn bg-neon self-center" disabled={!pw}>Open the board</button>
           </form>
         )}
 

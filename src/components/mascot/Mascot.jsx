@@ -29,7 +29,6 @@ const JOKES_GENERAL = [
   'Why did the mouse bring a ladder to the snack table? Because the cheese was on a higher tier! 🧀',
   'I never snitch… unless someone pays me in cheddar. Just kidding, I work for gossip and drama! 🐭',
   'Careful — I have tiny paws, big ears, and zero impulse control. 👂✨',
-  'They told me to act normal at Erasmus+. I immediately started climbing the UI cards. 😎',
 ];
 
 const JOKES_PAGE = {
@@ -194,7 +193,6 @@ export default function Mascot() {
   const [text, setText] = useState('');
   const [note, setNote] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [showName, setShowName] = useState(false);
   const [sent, setSent] = useState(0);
   const [happy, setHappy] = useState(false);
 
@@ -296,7 +294,6 @@ export default function Mascot() {
     setNote(null);
     setHappy(false);
     setSent(0);
-    setShowName(false);
     setTargetFilter('');
     setGiftTargetId('');
     setGiftAmount('10');
@@ -334,7 +331,7 @@ export default function Mascot() {
     }
     setBusy(true);
     try {
-      await sendGossip(text, showName);
+      await sendGossip(text, false);
       setText(''); setSent((n) => n + 1); setHappy(true);
       setNote({ kind: 'ok', text: JOKES_THANKS_GOSSIP[sent % JOKES_THANKS_GOSSIP.length] });
       setTimeout(() => setHappy(false), 2600);
@@ -437,80 +434,96 @@ export default function Mascot() {
     const giftTarget = users.find((u) => u.id === giftTargetId) || null;
 
     const panelBadge = (() => {
-      if (phase === 'write') return showName ? `👤 ${profile?.name || 'You'}` : '🔒 Anonymous';
+      if (phase === 'write') return '🔒 Anonymous';
       if (phase === 'gift') return `🎁 Gift · You: ${myScore} PTS`;
-      if (phase === 'steal-task' || phase === 'steal-form') return '🕵️ Top Secret Heist';
+      if (phase === 'steal-task' || phase === 'steal-form') return '🕵️ Heist';
       if (phase === 'deal-done') return '🤝 Deal Closed';
       return null;
     })();
 
     return (
-      <div className="fixed z-[60] right-2 bottom-2 sm:right-6 sm:bottom-4 flex items-end gap-1 sm:gap-2 max-w-[calc(100vw-1rem)]">
-        <div className={`mascot-pop mascot-panel relative min-w-0 mb-6 border-[3px] border-ink rounded-xl shadow-b6 flex flex-col max-h-[82vh] ${wide ? 'w-[280px] sm:w-[370px]' : 'w-[235px] sm:w-[295px]'}`}>
-          <div className="flex items-center justify-between gap-2 px-1.5 pt-1 border-b-[3px] border-ink bg-paper rounded-t-lg shrink-0">
-            {panelBadge
-              ? <span className="border-2 border-b-0 border-ink bg-sun rounded-t px-2 py-0.5 font-mono text-[11px] font-bold uppercase max-w-[80%] truncate">{panelBadge}</span>
-              : <span className="font-mono text-[11px] font-bold uppercase px-1.5 text-mute">🐭 Rattie Patty</span>}
-            <button onClick={close} aria-label="Close" className="w-6 h-6 mb-1 border-2 border-ink bg-white font-bold leading-none">✕</button>
-          </div>
-
-          <div className="relative z-10 p-3 sm:p-4 flex flex-col gap-2.5 text-sm font-bold overflow-y-auto">
-            {phase === 'login' && (<>
-              <p>Hi, I’m Rattie Patty! <span className="text-hot">❤</span></p>
-              <p className="font-medium text-xs text-[#4b4731] italic">{joke}</p>
-              <p className="font-medium">I don’t see who you are yet 🧐 Sign in or register — then we can gossip, gift points, or pull off a cheeky heist!</p>
-              <button className="btn bg-neon text-xs" onClick={() => { close(); openAccount(null); }}>Register / Sign in</button>
-            </>)}
-
-            {phase === 'hello' && (<>
-              <p>Hi, I’m Rattie Patty! <span className="text-hot">❤</span></p>
-              <p className="font-medium">Nice to see you, <b className="break-words">{profile?.name}</b>! You have <span className="tag bg-sun">{myScore} PTS</span></p>
-              <p className="font-medium text-xs bg-paper border-2 border-ink/20 rounded-lg px-2.5 py-2 italic">“{joke}”</p>
-              <p className="font-medium">I’ve got <b>three deals</b> on the table today. Pick your move:</p>
-              <div className="flex flex-col gap-2 pt-0.5">
-                <button className="btn bg-neon text-xs justify-between" onClick={() => { setNote(null); setPhase('write'); }}>
-                  <span>🤫 Tell a gossip</span><span className="tag bg-white">+{GOSSIP_POINTS} PT</span>
-                </button>
-                <button className="btn bg-sun text-xs justify-between" onClick={() => { setNote(null); setTargetFilter(''); setPhase('gift'); }}>
-                  <span>🎁 Gift points</span><span className="tag bg-white">SECRET</span>
-                </button>
-                <button className="btn bg-hot text-white text-xs justify-between" onClick={() => { setNote(null); setSelectedTaskId(heistTasks[0]?.id || ''); setPhase('steal-task'); }}>
-                  <span>🕵️ Steal points</span><span className="tag bg-ink text-white">HEIST</span>
+      <div
+        className="fixed inset-0 z-[60] bg-ink/60 backdrop-blur-[2px] flex items-end justify-end p-2 sm:p-6"
+        onClick={close}
+      >
+        <div
+          className="flex items-end gap-1.5 sm:gap-2.5 max-w-full"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className={`mascot-pop relative min-w-0 mb-4 sm:mb-6 ${wide ? 'w-[285px] sm:w-[380px]' : 'w-[245px] sm:w-[305px]'}`}>
+            <div className="border-4 border-ink rounded-2xl shadow-b8 bg-paper overflow-hidden flex flex-col max-h-[82vh]">
+              <div className="bg-sun px-3 sm:px-4 py-2.5 border-b-[3px] border-ink flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-mono text-xs font-bold uppercase truncate">■ Rattie Patty</span>
+                  {panelBadge && (
+                    <span className="tag bg-white text-ink text-[10px] truncate max-w-[140px]">{panelBadge}</span>
+                  )}
+                </div>
+                <button
+                  onClick={close}
+                  aria-label="Close"
+                  className="w-6 h-6 shrink-0 border-2 border-ink bg-hot text-white font-bold flex items-center justify-center leading-none"
+                >
+                  ✕
                 </button>
               </div>
-            </>)}
 
-            {phase === 'write' && (<>
-              <div className="flex items-center justify-between gap-2">
-                <button type="button" onClick={() => { setNote(null); setPhase('hello'); }} className="font-mono text-xs underline text-mute">← Back to deals</button>
-              </div>
-              <p className="font-medium">{note ? <span className={note.kind === 'ok' ? 'text-[#007a33] font-bold' : note.kind === 'err' ? 'text-hot font-mono text-xs' : 'text-[#c4263f] font-bold'}>{note.text}</span>
-                : <>I’m all ears… tell me a juicy gossip for <span className="text-[#c4263f]">{pts(GOSSIP_POINTS)}</span>! 👂</>}</p>
-              <textarea autoFocus rows={4} maxLength={MAX_GOSSIP_LENGTH} value={text} disabled={busy}
-                onChange={(e) => { setText(e.target.value); if (note?.kind !== 'ok') setNote(null); }}
-                onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === 'Enter' && submitGossip()}
-                placeholder="Write your gossip here…"
-                className="w-full resize-none border-[3px] border-ink rounded-xl px-3 py-2 font-sans text-sm font-medium bg-white focus:outline-none focus:bg-sun/20" />
-              <div className="flex border-[3px] border-ink rounded-xl overflow-hidden font-mono text-[11px] font-bold uppercase" role="radiogroup" aria-label="Who is the gossip from">
-                <button type="button" role="radio" aria-checked={!showName} onClick={() => setShowName(false)} className={`flex-1 px-2 py-1.5 ${!showName ? 'bg-ink text-white' : 'bg-white'}`}>🔒 Anonymous</button>
-                <button type="button" role="radio" aria-checked={showName} onClick={() => setShowName(true)} className={`flex-1 px-2 py-1.5 border-l-[3px] border-ink min-w-0 truncate ${showName ? 'bg-ink text-white' : 'bg-white'}`}>👤 Show my name</button>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className={`font-mono text-[11px] font-normal ${words >= GOSSIP_MIN_WORDS ? 'text-[#007a33]' : 'text-mute'}`}>{words} {words === 1 ? 'word' : 'words'} · {GOSSIP_MIN_WORDS}+ = {GOSSIP_POINTS} pt</span>
-                <button className="btn bg-neon text-xs py-1.5" disabled={busy} onClick={submitGossip}>{busy ? '…' : 'Send'}</button>
-              </div>
-              <p className="font-mono text-[11px] font-normal text-mute leading-snug">
-                🤫 <b className="font-bold text-ink">I know how to keep secrets!</b>{' '}
-                {showName
-                  ? `Other participants never see your gossip. Only the organizers can read it, with your name (${profile?.name || 'you'}).`
-                  : 'Your gossip is anonymous: other participants never see it, and nobody will know it was you.'}
-              </p>
-            </>)}
+              <div className="relative z-10 bg-paper p-3.5 sm:p-4 flex flex-col gap-2.5 text-sm font-bold overflow-y-auto">
+                {phase === 'login' && (<>
+                  <div className="bg-white border-2 border-ink rounded-xl px-3 py-2 shadow-b2 flex flex-col gap-1.5">
+                    <p>Hi, I’m Rattie Patty! <span className="text-hot">❤</span></p>
+                    {joke && <p className="font-medium text-xs text-mute italic">{joke}</p>}
+                    <p className="font-medium text-xs">Sign in or register — then we can gossip, gift points, or pull off a cheeky heist!</p>
+                  </div>
+                  <button className="btn bg-neon text-xs" onClick={() => { close(); openAccount(null); }}>Register / Sign in</button>
+                </>)}
+
+                {phase === 'hello' && (<>
+                  <div className="bg-white border-2 border-ink rounded-xl px-3 py-2.5 shadow-b2 flex flex-col gap-1.5">
+                    <p>Hi, I’m Rattie Patty! <span className="text-hot">❤</span></p>
+                    <p className="font-medium text-xs sm:text-sm">Nice to see you, <b className="break-words">{profile?.name}</b>! You have <span className="tag bg-sun">{myScore} PTS</span></p>
+                    {joke && <p className="font-medium text-xs bg-paper border-2 border-ink/20 rounded-lg px-2.5 py-1.5 italic">“{joke}”</p>}
+                  </div>
+                  <p className="font-mono text-[11px] uppercase text-mute px-0.5">Pick your deal:</p>
+                  <div className="flex flex-col gap-2">
+                    <button className="btn bg-neon text-xs justify-between" onClick={() => { setNote(null); setPhase('write'); }}>
+                      <span>🤫 Tell a gossip</span><span className="tag bg-white">+{GOSSIP_POINTS} PT</span>
+                    </button>
+                    <button className="btn bg-sun text-xs justify-between" onClick={() => { setNote(null); setTargetFilter(''); setPhase('gift'); }}>
+                      <span>🎁 Gift points</span><span className="tag bg-white">SECRET</span>
+                    </button>
+                    <button className="btn bg-hot text-white text-xs justify-between" onClick={() => { setNote(null); setSelectedTaskId(heistTasks[0]?.id || ''); setPhase('steal-task'); }}>
+                      <span>🕵️ Steal points</span><span className="tag bg-ink text-white">HEIST</span>
+                    </button>
+                  </div>
+                </>)}
+
+                {phase === 'write' && (<>
+                  <div className="flex items-center justify-between gap-2">
+                    <button type="button" onClick={() => { setNote(null); setPhase('hello'); }} className="font-mono text-xs underline text-mute">← Back to deals</button>
+                  </div>
+                  <div className="bg-white border-2 border-ink rounded-xl px-3 py-2 shadow-b2">
+                    <p className="font-medium text-xs sm:text-sm">{note ? <span className={note.kind === 'ok' ? 'text-[#007a33] font-bold' : note.kind === 'err' ? 'text-hot font-mono text-xs' : 'text-[#c4263f] font-bold'}>{note.text}</span>
+                      : <>I’m all ears… tell me a juicy gossip for <span className="text-[#c4263f]">{pts(GOSSIP_POINTS)}</span>! 👂</>}</p>
+                  </div>
+                  <textarea autoFocus rows={4} maxLength={MAX_GOSSIP_LENGTH} value={text} disabled={busy}
+                    onChange={(e) => { setText(e.target.value); if (note?.kind !== 'ok') setNote(null); }}
+                    onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === 'Enter' && submitGossip()}
+                    placeholder="Write your gossip here…"
+                    className="w-full resize-none border-[3px] border-ink rounded-xl px-3 py-2 font-sans text-sm font-medium bg-white shadow-b2 focus:outline-none focus:bg-sun/20" />
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`font-mono text-[11px] font-normal ${words >= GOSSIP_MIN_WORDS ? 'text-[#007a33]' : 'text-mute'}`}>{words} {words === 1 ? 'word' : 'words'} · {GOSSIP_MIN_WORDS}+ = {GOSSIP_POINTS} pt</span>
+                    <button className="btn bg-neon text-xs py-1.5" disabled={busy} onClick={submitGossip}>{busy ? '…' : 'Send anonymously'}</button>
+                  </div>
+                  <p className="font-mono text-[11px] font-normal text-mute leading-snug">
+                    🤫 <b className="font-bold text-ink">100% anonymous!</b> Your name is never stored — nobody will ever know who sent it.
+                  </p>
+                </>)}
 
             {phase === 'gift' && (
               <form onSubmit={submitGift} className="flex flex-col gap-2.5">
                 <button type="button" onClick={() => { setNote(null); setPhase('hello'); }} className="self-start font-mono text-xs underline text-mute">← Back to deals</button>
-                <div className="bg-sun/30 border-2 border-ink rounded-xl p-2.5 text-xs font-medium leading-snug">
+                <div className="bg-white border-2 border-ink rounded-xl p-2.5 text-xs font-medium leading-snug shadow-b2">
                   🎁 <b>How gifting works:</b> Pick a participant you want to reward. The points are taken directly from <b>your own account</b> ({myScore} PTS) and given to them — no task needed, and they will never know it was from you!
                 </div>
                 <label className="flex flex-col gap-1 font-mono text-[11px] uppercase">
@@ -534,7 +547,7 @@ export default function Mascot() {
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   {[5, 10, 25, 50].filter((n) => n <= myScore).map((n) => (
-                    <button type="button" key={n} onClick={() => setGiftAmount(String(n))} className="tag bg-paper hover:bg-sun">+{n}</button>
+                    <button type="button" key={n} onClick={() => setGiftAmount(String(n))} className="tag bg-white hover:bg-sun">+{n}</button>
                   ))}
                 </div>
                 {giftTarget && Number(giftAmount) > 0 && Number(giftAmount) <= myScore && (
@@ -551,11 +564,11 @@ export default function Mascot() {
 
             {phase === 'steal-task' && (<>
               <button type="button" onClick={() => { setNote(null); setPhase('hello'); }} className="self-start font-mono text-xs underline text-mute">← Back to deals</button>
-              <p className="font-medium text-xs bg-paper border-2 border-ink/20 rounded-lg px-2.5 py-2 italic">
+              <p className="font-medium text-xs bg-white border-2 border-ink rounded-xl px-3 py-2 italic shadow-b2">
                 “Psst… want to pull off a heist? First, prove you’ve got what it takes by finishing one of the organizers’ secret tasks!”
               </p>
               {heistTasks.length === 0 ? (
-                <div className="border-2 border-ink rounded-xl bg-sun/30 p-3 text-xs font-medium">
+                <div className="border-2 border-ink rounded-xl bg-white p-3 text-xs font-medium shadow-b2">
                   No heist tasks are posted yet! Ask an organizer to add tasks in <b>Admin panel → Rattie Patty: heists</b>.
                 </div>
               ) : (
@@ -583,7 +596,7 @@ export default function Mascot() {
             {phase === 'steal-form' && (
               <form onSubmit={submitSteal} className="flex flex-col gap-2.5">
                 <button type="button" onClick={() => { setNote(null); setPhase('steal-task'); }} className="self-start font-mono text-xs underline text-mute">← Change task</button>
-                <div className="border-2 border-ink rounded-lg bg-sun/30 px-2.5 py-1.5 text-xs">
+                <div className="border-2 border-ink rounded-xl bg-sun px-2.5 py-1.5 text-xs shadow-b2">
                   <b>Task:</b> {selectedTask?.title}
                 </div>
                 <label className="flex flex-col gap-1 font-mono text-[11px] uppercase">
@@ -615,7 +628,7 @@ export default function Mascot() {
                   </select>
                 </label>
                 {stealVictim && (
-                  <div className="bg-paper border-2 border-ink rounded-lg px-2.5 py-1.5 font-mono text-xs flex justify-between">
+                  <div className="bg-white border-2 border-ink rounded-lg px-2.5 py-1.5 font-mono text-xs flex justify-between shadow-b2">
                     <span>{stealVictim.name} has:</span>
                     <b>{stealVictimScore} PTS</b>
                   </div>
@@ -635,27 +648,31 @@ export default function Mascot() {
 
             {phase === 'deal-done' && (<>
               <div className="tag bg-neon self-start">Deal sealed</div>
-              <p className="text-base font-extrabold uppercase">Thank you for the deal, my friend! — Rattie Patty 🐭🤝</p>
-              <p className="font-medium text-xs">
-                {dealDoneInfo?.kind === 'gift'
-                  ? `You gifted ${dealDoneInfo.amount} PTS anonymously. Nobody will ever know it was you!`
-                  : `Your heist request for ${dealDoneInfo?.amount} PTS has been sent to the organizers for approval. Once approved, they’ll never know who robbed them!`}
-              </p>
-              <p className="font-medium text-xs bg-paper border-2 border-ink/20 rounded-lg px-2.5 py-2 italic">“{dealDoneInfo?.joke}”</p>
+              <div className="bg-white border-2 border-ink rounded-xl px-3 py-2.5 shadow-b2 flex flex-col gap-1.5">
+                <p className="text-base font-extrabold uppercase">Thank you for the deal, my friend! — Rattie Patty 🐭🤝</p>
+                <p className="font-medium text-xs">
+                  {dealDoneInfo?.kind === 'gift'
+                    ? `You gifted ${dealDoneInfo.amount} PTS anonymously. Nobody will ever know it was you!`
+                    : `Your heist request for ${dealDoneInfo?.amount} PTS has been sent to the organizers for approval. Once approved, they’ll never know who robbed them!`}
+                </p>
+                <p className="font-medium text-xs bg-paper border-2 border-ink/20 rounded-lg px-2.5 py-1.5 italic">“{dealDoneInfo?.joke}”</p>
+              </div>
               <div className="flex gap-2 pt-1">
                 <button className="btn bg-sun text-xs flex-1" onClick={() => { resetForms(); setPhase('hello'); }}>Another deal</button>
                 <button className="btn bg-white text-xs flex-1" onClick={close}>Bye, Rattie!</button>
               </div>
             </>)}
+              </div>
+            </div>
+            <span className="absolute -right-2 bottom-7 w-4 h-4 rotate-45 bg-paper border-r-[4px] border-t-[4px] border-ink pointer-events-none" />
           </div>
-          <span className="absolute -right-2 bottom-5 w-4 h-4 rotate-45 bg-white border-r-[3px] border-t-[3px] border-ink" />
-        </div>
-        <div className="relative shrink-0">
-          {happy && <span key={sent} className="mascot-float absolute left-1/2 -top-2 -translate-x-1/2 border-2 border-ink bg-neon rounded px-2 py-0.5 font-mono font-bold text-sm shadow-b2">+{GOSSIP_POINTS}</span>}
-          {phase === 'deal-done' && dealDoneInfo?.kind === 'gift' && (
-            <span className="mascot-float absolute left-1/2 -top-2 -translate-x-1/2 border-2 border-ink bg-sun rounded px-2 py-0.5 font-mono font-bold text-sm shadow-b2">🎁 −{dealDoneInfo.amount}</span>
-          )}
-          <img src={s.src} alt="" draggable={false} style={{ width: s.w * k, height: s.h * k }} />
+          <div className="relative shrink-0">
+            {happy && <span key={sent} className="mascot-float absolute left-1/2 -top-2 -translate-x-1/2 border-2 border-ink bg-neon rounded px-2 py-0.5 font-mono font-bold text-sm shadow-b2">+{GOSSIP_POINTS}</span>}
+            {phase === 'deal-done' && dealDoneInfo?.kind === 'gift' && (
+              <span className="mascot-float absolute left-1/2 -top-2 -translate-x-1/2 border-2 border-ink bg-sun rounded px-2 py-0.5 font-mono font-bold text-sm shadow-b2">🎁 −{dealDoneInfo.amount}</span>
+            )}
+            <img src={s.src} alt="" draggable={false} style={{ width: s.w * k, height: s.h * k }} />
+          </div>
         </div>
       </div>
     );

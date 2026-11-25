@@ -168,7 +168,7 @@ async function gossipId(userId, text) {
   return [...new Uint8Array(buf)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function sendGossip(user, rawText, showName = false, via = null) {
+export async function sendGossip(user, rawText, _showName = false, via = null) {
   const text = String(rawText || '').trim().replace(/\s+/g, ' ').slice(0, MAX_GOSSIP_LENGTH);
   const words = countWords(text);
   const fail = (code, message) => Object.assign(new Error(message), { code });
@@ -179,9 +179,8 @@ export async function sendGossip(user, rawText, showName = false, via = null) {
     const [g, u] = await Promise.all([tx.get(gRef), tx.get(uRef)]);
     if (!u.exists()) throw fail('nouser', 'Account not found.');
     if (g.exists()) throw fail('duplicate', 'Already told.');
-    // anonymous = the author is not stored at all (not even the admin can see it); otherwise the admin sees the name
-    const author = showName ? { anonymous: false, userId: user.id, userName: user.name } : { anonymous: true };
-    tx.set(gRef, { ...author, text, words, points: GOSSIP_POINTS, ...(via ? { via } : {}), createdAt: serverTimestamp() });
+    // all gossips are strictly anonymous: no author identity is stored
+    tx.set(gRef, { anonymous: true, text, words, points: GOSSIP_POINTS, ...(via ? { via } : {}), createdAt: serverTimestamp() });
     tx.update(uRef, { score: increment(GOSSIP_POINTS) });
     // generic reason on purpose: the points log is visible to everybody, the gossip itself is not
     tx.set(doc(collection(db, 'pointsLog')), { userId: user.id, delta: GOSSIP_POINTS, reason: 'Gift from Rattie Patty', createdAt: serverTimestamp() });

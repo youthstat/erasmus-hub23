@@ -6,11 +6,11 @@ import { Avatar, Win } from '../components/games/SfParts.jsx';
 import { ChatFromFriend } from '../components/games/SecretChat.jsx';
 import { useApp } from '../context/AppContext.jsx';
 import { useGame } from '../hooks/useGame.js';
-import { isJoined, sfProgress, saveSfProfile } from '../firebase/games.js';
+import { isJoined, saveSfProfile } from '../firebase/games.js';
 import { fileToCover } from '../utils/image.js';
-import { SF_PROFILE_FIELDS, SF_PROFILE_BONUS, SF_PROFILE_MAX, SF_PROFILE_MIN } from '../config/settings.js';
+import { SF_PROFILE_FIELDS, SF_PROFILE_BONUS, SF_PROFILE_MAX } from '../config/settings.js';
 
-// My own page for my secret friend: everything is optional. A detailed profile pays SF_PROFILE_BONUS points once.
+// My own page for my secret friend: saving a filled-in profile automatically gives +50 points once.
 export default function SfProfilePage() {
   const { profile, openAccount } = useApp();
   const { byId, countryOfId } = useGame('sf');
@@ -26,7 +26,6 @@ export default function SfProfilePage() {
     if (me && !loaded.current) { loaded.current = true; setForm((f) => ({ ...f, ...(me.profile || {}) })); }
   }, [me]);
 
-  const progress = sfProgress(form);
   const got = !!me?.profileBonus;
   const set = (k, v) => { setForm((f) => ({ ...f, [k]: v })); setOk(''); setMsg(''); };
   const pickPhoto = async (e) => {
@@ -45,7 +44,7 @@ export default function SfProfilePage() {
 
   return (
     <>
-      <Marquee className="bg-sun text-ink" items={['MY SECRET FRIEND PROFILE', 'ALL FIELDS ARE OPTIONAL', `FILL IT IN · GET +${SF_PROFILE_BONUS} POINTS`]} />
+      <Marquee className="bg-sun text-ink" items={['MY SECRET FRIEND PROFILE', 'FILL IT IN · PRESS SAVE', `GET +${SF_PROFILE_BONUS} POINTS ONCE`]} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
         <Header back />
         {!profile && <div className="box p-6 flex flex-col gap-3 items-start"><p className="font-medium">Sign in to fill in your profile.</p><button className="btn bg-neon" onClick={() => openAccount(null)}>Sign in / Register</button></div>}
@@ -54,11 +53,14 @@ export default function SfProfilePage() {
           <>
             <div className={`border-[3px] border-ink rounded-xl shadow-b6 p-4 sm:p-6 flex flex-wrap items-center justify-between gap-4 ${got ? 'bg-neon' : 'bg-sun'}`}>
               <div>
-                <div className="font-mono text-xs font-bold uppercase">{got ? 'Profile complete' : 'Bonus'}</div>
+                <div className="font-mono text-xs font-bold uppercase">{got ? 'Profile saved' : 'Bonus'}</div>
                 <h1 className="text-2xl sm:text-4xl font-extrabold uppercase leading-tight">{got ? `✓ You got +${SF_PROFILE_BONUS} points` : `Fill in your profile — get +${SF_PROFILE_BONUS} points`}</h1>
-                <p className="font-bold mt-1 max-w-2xl">{got ? 'Thank you! Your secret friend can now surprise you the right way. You can still edit everything.' : `Write a few words (at least ${SF_PROFILE_MIN} characters) in every section — your secret friend will see it and you get the points once. Everything is optional, the photo too.`}</p>
+                <p className="font-bold mt-1 max-w-2xl">
+                  {got
+                    ? 'Thank you! Your secret friend can now surprise you the right way. You can still edit everything.'
+                    : `Fill in your profile and press “Save profile” — you automatically get +${SF_PROFILE_BONUS} points once!`}
+                </p>
               </div>
-              <div className="border-[3px] border-ink rounded-xl bg-white px-4 py-2 text-center shadow-b4"><div className="text-3xl font-extrabold">{progress.done}/{progress.total}</div><div className="font-mono text-[11px] uppercase font-bold">sections</div></div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -82,7 +84,6 @@ export default function SfProfilePage() {
                       <div key={f.id} className={`border-[3px] border-ink rounded-xl shadow-b4 p-4 flex flex-col gap-2 ${f.danger ? 'bg-hot/15' : 'bg-white'}`}>
                         <label className="font-mono text-xs font-bold uppercase flex flex-wrap items-center justify-between gap-2" htmlFor={`sf-${f.id}`}>
                           <span>{String(i + 1).padStart(2, '0')} // {f.icon} {f.title}</span>
-                          <span className={`tag ${progress.fields[i].ok ? 'bg-neon' : 'bg-white'}`}>{progress.fields[i].ok ? '✓ DONE' : 'OPTIONAL'}</span>
                         </label>
                         <textarea id={`sf-${f.id}`} className="input !shadow-none" rows={3} maxLength={SF_PROFILE_MAX} placeholder={f.ph} value={form[f.id] || ''} onChange={(e) => set(f.id, e.target.value)} />
                         <div className="font-mono text-[11px] text-mute text-right">{(form[f.id] || '').length} / {SF_PROFILE_MAX}</div>
@@ -100,18 +101,7 @@ export default function SfProfilePage() {
               </div>
 
               <div className="lg:col-span-5 flex flex-col gap-6">
-                <ChatFromFriend me={me} />
-                <div className="box shadow-b6 overflow-hidden">
-                  <div className="bg-ink text-white px-4 py-2 font-mono text-xs font-bold uppercase flex justify-between"><span>Profile checklist</span><span className="text-sun">{progress.done}/{progress.total}</span></div>
-                  <div className="p-4 bg-white flex flex-col gap-2">
-                    {progress.fields.map((f) => (
-                      <div key={f.id} className={`border-[3px] border-ink rounded-lg px-3 py-2 flex items-center gap-3 text-sm font-bold ${f.ok ? 'bg-neon' : 'bg-white border-dashed'}`}>
-                        <span className="font-mono">{f.ok ? '✓' : '○'}</span><span>{f.title}</span>
-                      </div>
-                    ))}
-                    <p className="font-mono text-[11px] text-mute mt-1">Your secret friend sees only this profile and your questions’ answers — never your account.</p>
-                  </div>
-                </div>
+                <ChatFromFriend />
               </div>
             </div>
           </>
