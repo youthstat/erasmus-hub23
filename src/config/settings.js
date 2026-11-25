@@ -126,3 +126,10 @@ export const SF_PROFILE_FIELDS = [
   { id: 'wishlist', icon: '🎁', title: 'Small joys & wishlist', ph: 'A postcard from your hometown, cozy socks, stickers, a handwritten note…' },
   { id: 'allergies', icon: '⚠️', title: 'Allergies & things I do not like', ph: 'No nuts, vegetarian, no coffee, no loud surprises…', danger: true },
 ];
+
+/* ---------- Авторські права ---------- */
+export const COPYRIGHT = {
+  year: 2026,
+  owner: 'Diana Demianets',
+  email: 'demianets20@gmail.com',
+};

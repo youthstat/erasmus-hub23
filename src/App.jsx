@@ -13,6 +13,8 @@ import GossipBoardPage from './pages/GossipBoardPage.jsx';
 import PunishmentPage from './pages/PunishmentPage.jsx';
 import SfBuddyPage from './pages/SfBuddyPage.jsx';
 import SfProfilePage from './pages/SfProfilePage.jsx';
+import Footer from './components/layout/Footer.jsx';
+import CopyrightPage from './pages/CopyrightPage.jsx';
 import Gate from './components/layout/Gate.jsx';
 import Mascot from './components/mascot/Mascot.jsx';
 import ModalHost from './components/modals/ModalHost.jsx';
@@ -57,6 +59,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/copyright" element={<CopyrightPage />} />
         <Route path="/schedule" element={<Gate id="schedule"><PlaceholderPage title="Schedule & timeline" /></Gate>} />
         <Route path="/secret-friend" element={<Gate id="secret-friend"><SecretFriendPage /></Gate>} />
         <Route path="/secret-friend/buddy" element={<Gate id="secret-friend"><SfBuddyPage /></Gate>} />
@@ -69,6 +72,7 @@ export default function App() {
         <Route path="/punishment" element={<Gate id="punishment"><PunishmentPage /></Gate>} />
         <Route path="/gossips" element={<Gate id="gossips"><GossipBoardPage /></Gate>} />
       </Routes>
+      <Footer />
       <ModalHost />
       <Mascot />
     </>

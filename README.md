@@ -94,3 +94,6 @@ Killer game: кнопка «I killed my victim» вбиває жертву (ви
 - `/secret-friend/my-profile` — твій профіль для твого секрет френда (фото, 4 поля, збереження), вхідні питання від секрет френда з відповідями, чекліст.
 - **+50 балів** (`SF_PROFILE_BONUS`) одноразово, коли всі 4 текстові поля заповнені (≥15 символів кожне, `SF_PROFILE_MIN`). Підказка «Fill in your profile — get +50 points» на головній, у профілі й у кнопках.
 - Дані: `sfPlayers/{id}.profile` (+ `profileBonus`). Старі «likes/dislikes» показуються як «Earlier wishes».
+
+## Copyright
+Copyright © 2026 Diana Demianets. All rights reserved. See the `LICENSE` file. The notice is in the footer of every page, the full text is at `/copyright`, and it is also in `index.html` (meta author/copyright), in the built JS (`/*! … */` comment) and in `package.json` (`"license": "UNLICENSED"`). Contact: demianets20@gmail.com
