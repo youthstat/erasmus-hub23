@@ -11,6 +11,7 @@ import OscarVotePage from './pages/OscarVotePage.jsx';
 import HelpPage from './pages/HelpPage.jsx';
 import GossipBoardPage from './pages/GossipBoardPage.jsx';
 import PunishmentPage from './pages/PunishmentPage.jsx';
+import MouseRunPage from './pages/MouseRunPage.jsx';
 import SfBuddyPage from './pages/SfBuddyPage.jsx';
 import SfProfilePage from './pages/SfProfilePage.jsx';
 import Footer from './components/layout/Footer.jsx';
@@ -70,6 +71,7 @@ export default function App() {
         <Route path="/oscar/vote" element={<Gate id="oscar"><OscarVotePage /></Gate>} />
         <Route path="/ask" element={<Gate id="ask"><HelpPage /></Gate>} />
         <Route path="/punishment" element={<Gate id="punishment"><PunishmentPage /></Gate>} />
+        <Route path="/mouse-run" element={<Gate id="mouse-run"><MouseRunPage /></Gate>} />
         <Route path="/gossips" element={<Gate id="gossips"><GossipBoardPage /></Gate>} />
       </Routes>
       <Footer />

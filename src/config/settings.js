@@ -89,6 +89,11 @@ export const PUNISHMENT_MIN_LENGTH = 5;    // мінімум символів
 export const PUNISHMENT_MAX_LENGTH = 200;  // максимум символів
 
 /* ---------- Що показується учасникам на головному екрані (Admin panel → Home screen) ---------- */
+/* ---------- Rattie Run (гра-бігалка) ---------- */
+export const MOUSERUN_POINTS_PER_STAR = 1;     // скільки балів дає одна зірочка при обміні після пройденого рівня
+export const MOUSERUN_GAMEOVER_RATE = 0.5;     // якщо життя закінчились — обмін за зниженим курсом (0.5 = половина)
+export const MOUSERUN_DAILY_CAP = 30;          // максимум балів на людину за день з цієї гри
+
 export const HOME_SECTIONS = [
   { id: 'missions', title: 'Missions', kind: 'block' },
   { id: 'ranking', title: 'Ranking (list of participants)', kind: 'block' },
@@ -97,6 +102,7 @@ export const HOME_SECTIONS = [
   { id: 'killer-game', title: 'Killer game', kind: 'card' },
   { id: 'oscar', title: 'Oscar Night', kind: 'card' },
   { id: 'punishment', title: 'Punishment box', kind: 'card' },
+  { id: 'mouse-run', title: 'Rattie Run (game)', kind: 'card' },
   { id: 'ask', title: 'Ask the Team', kind: 'card' },
   { id: 'gossips', title: 'Gossip board', kind: 'card' },
   { id: 'reflection', title: 'Daily reflection', kind: 'card' },
