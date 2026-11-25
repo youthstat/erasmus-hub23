@@ -1,8 +1,11 @@
 import { useGame, countryOf } from '../../hooks/useGame.js';
+import { KILL_MOODS } from '../../config/settings.js';
 
 // Public board: who is still alive and who is already killed (crossed out)
 export default function KillerBoard() {
-  const { playing, dead } = useGame('kg');
+  const { playing, dead, players, nameOf } = useGame('kg');
+  // stories told by the hunters (no names of the hunters — only who was eliminated and how it went)
+  const stories = players.filter((p) => p.dead && p.killStory?.text).sort((a, b) => (b.killedAt?.seconds || 0) - (a.killedAt?.seconds || 0));
   const sorted = [...playing].sort((a, b) => Number(dead.has(a.id)) - Number(dead.has(b.id)) || a.name.localeCompare(b.name));
   const aliveCount = playing.filter((u) => !dead.has(u.id)).length;
   const deadCount = playing.length - aliveCount;
@@ -32,6 +35,17 @@ export default function KillerBoard() {
         })}
         {sorted.length === 0 && <p className="font-mono text-sm col-span-full">No players yet.</p>}
       </div>
+      {stories.length > 0 && (
+        <div className="border-t-[3px] border-ink bg-white p-4 sm:p-6 flex flex-col gap-3">
+          <div className="font-mono text-xs font-bold uppercase">How it happened</div>
+          {stories.map((p) => (
+            <div key={p.id} className="border-[3px] border-ink rounded-xl p-3 bg-paper shadow-b2">
+              <div className="flex flex-wrap items-center gap-2"><b className="uppercase">💀 {nameOf(p.id)}</b>{p.killStory.difficulty && <span className="tag bg-sun">{KILL_MOODS.find((m) => m.id === p.killStory.difficulty)?.label}</span>}</div>
+              <p className="mt-1 text-sm font-medium break-words">“{p.killStory.text}”</p>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

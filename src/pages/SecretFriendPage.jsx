@@ -28,13 +28,13 @@ export default function SecretFriendPage() {
           <h2 className="text-2xl font-extrabold uppercase">How it works — 4 steps</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Step n="01" tag="Join" title="Sign in" cls="bg-sun">
-              <p className="text-sm font-medium">Sign in to your account (Sign in / Register at the top). Your name is used automatically. Write what you like and what you do not — your secret friend will see it. Then press “Join the Secret friend game”.</p>
+              <p className="text-sm font-medium">Sign in to your account (Sign in / Register at the top). Your name is used automatically. Press “Join the Secret friend game”. Then you can fill in your own profile (everything is optional) — a detailed profile gives +50 points.</p>
             </Step>
             <Step n="02" tag="Draw" title="See who it is" cls="bg-neon">
-              <p className="text-sm font-medium">Press “Show me who I am secret friend of”. You see the name, the country and the wishes of the person you secretly take care of. Nobody gets themselves, and every name is given to only one participant.</p>
+              <p className="text-sm font-medium">Press “Show me who I am secret friend of”. You see the name of the person you secretly take care of — open their profile to see what they like, and chat with them anonymously. Nobody gets themselves, and every name is given to only one participant.</p>
             </Step>
             <Step n="03" tag="Days 2–6" title="Stealth care" cls="bg-cobalt text-white">
-              <p className="text-sm font-medium">Small kind gestures: a note, tea, a snack, a song. Never about money — about attention.</p>
+              <p className="text-sm font-medium">Small kind gestures: a note, tea, a snack, a song. Never about money — about attention. Ask your person up to 3 questions a day in the secret chat.</p>
             </Step>
             <Step n="04" tag="Final gala" title="The reveal" cls="bg-hot text-white">
               <p className="text-sm font-medium">Your friend sits in the middle and gets 3 guesses. Then you say “It was me!”, hug and give a postcard.</p>

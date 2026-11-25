@@ -101,3 +101,28 @@ export const HOME_SECTIONS = [
   { id: 'gossips', title: 'Gossip board', kind: 'card' },
   { id: 'reflection', title: 'Daily reflection', kind: 'card' },
 ];
+
+/* ---------- Secret friend chat ---------- */
+export const SF_DAILY_QUESTIONS = 3;     // скільки питань за день сікрет френд може надіслати тому, кому дарує
+export const SF_QUESTION_MAX = 200;
+export const SF_ANSWER_MAX = 300;
+
+/* ---------- Killer game: історія вбивства ---------- */
+export const KILL_STORY_MAX = 300;
+export const KILL_MOODS = [
+  { id: 'easy', label: '😎 Easy peasy' },
+  { id: 'tricky', label: '🤔 Tricky' },
+  { id: 'hard', label: '😰 Super hard' },
+  { id: 'funny', label: '😂 Hilarious' },
+];
+
+/* ---------- Secret friend: profile (all fields optional, photo optional) ---------- */
+export const SF_PROFILE_BONUS = 50;     // одноразово за детально заповнений профіль
+export const SF_PROFILE_MIN = 15;       // скільки символів у кожному текстовому полі вважається «детально»
+export const SF_PROFILE_MAX = 300;
+export const SF_PROFILE_FIELDS = [
+  { id: 'drinks', icon: '☕', title: 'Favourite drinks, sweets & snacks', ph: 'Earl Grey tea, dark chocolate, sour gummies…' },
+  { id: 'hobbies', icon: '🎧', title: 'Hobbies, music & vibe', ph: 'Film photography, indie playlists, board games, hiking…' },
+  { id: 'wishlist', icon: '🎁', title: 'Small joys & wishlist', ph: 'A postcard from your hometown, cozy socks, stickers, a handwritten note…' },
+  { id: 'allergies', icon: '⚠️', title: 'Allergies & things I do not like', ph: 'No nuts, vegetarian, no coffee, no loud surprises…', danger: true },
+];

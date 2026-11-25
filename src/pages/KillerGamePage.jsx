@@ -30,7 +30,7 @@ export default function KillerGamePage() {
               <p className="text-sm font-medium">The victim must willingly touch or hold the item. Use any friendly pretext: “Could you hold my notebook for a second?”. Throwing or forcing is forbidden.</p>
             </Step>
             <Step n="04" tag="Chain" title="Inheritance" cls="bg-hot text-white">
-              <p className="text-sm font-medium">The eliminated player admits it and posts in the camp chat who got them (and with what). The killer presses “I killed my victim” — the victim is crossed out on the board and shown “You have been killed”, and the killer inherits their contract: the next victim and item appear on the killer’s screen.</p>
+              <p className="text-sm font-medium">The eliminated player admits it and posts in the camp chat who got them (and with what). The killer presses “I killed my victim”, tells in a few words how it went (the hardest or the funniest moment) — or presses “Keep it secret” — and confirms. The victim is crossed out on the board and shown “You have been killed”, and the killer inherits their contract: the next victim and item appear on the killer’s screen.</p>
             </Step>
           </div>
         </section>

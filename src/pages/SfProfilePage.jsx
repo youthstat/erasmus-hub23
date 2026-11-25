@@ -1,0 +1,122 @@
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import Marquee from '../components/layout/Marquee.jsx';
+import Header from '../components/layout/Header.jsx';
+import { Avatar, Win } from '../components/games/SfParts.jsx';
+import { ChatFromFriend } from '../components/games/SecretChat.jsx';
+import { useApp } from '../context/AppContext.jsx';
+import { useGame } from '../hooks/useGame.js';
+import { isJoined, sfProgress, saveSfProfile } from '../firebase/games.js';
+import { fileToCover } from '../utils/image.js';
+import { SF_PROFILE_FIELDS, SF_PROFILE_BONUS, SF_PROFILE_MAX, SF_PROFILE_MIN } from '../config/settings.js';
+
+// My own page for my secret friend: everything is optional. A detailed profile pays SF_PROFILE_BONUS points once.
+export default function SfProfilePage() {
+  const { profile, openAccount } = useApp();
+  const { byId, countryOfId } = useGame('sf');
+  const me = profile ? byId.get(profile.id) : null;
+  const [form, setForm] = useState({ drinks: '', hobbies: '', wishlist: '', allergies: '', photo: '' });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [ok, setOk] = useState('');
+  const loaded = useRef(false);
+  const fileRef = useRef(null);
+
+  useEffect(() => {                                    // fill the form once with what is already saved
+    if (me && !loaded.current) { loaded.current = true; setForm((f) => ({ ...f, ...(me.profile || {}) })); }
+  }, [me]);
+
+  const progress = sfProgress(form);
+  const got = !!me?.profileBonus;
+  const set = (k, v) => { setForm((f) => ({ ...f, [k]: v })); setOk(''); setMsg(''); };
+  const pickPhoto = async (e) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    try { set('photo', await fileToCover(file, 320)); } catch (err) { setMsg(err.message); }
+  };
+  const save = async () => {
+    setBusy(true); setMsg(''); setOk('');
+    try {
+      const { bonus } = await saveSfProfile(profile.id, form);
+      setOk(bonus ? `Saved! +${SF_PROFILE_BONUS} points added to your rating 🎉` : 'Saved. Your secret friend sees it now.');
+    } catch (err) { setMsg(err.message); }
+    setBusy(false);
+  };
+
+  return (
+    <>
+      <Marquee className="bg-sun text-ink" items={['MY SECRET FRIEND PROFILE', 'ALL FIELDS ARE OPTIONAL', `FILL IT IN · GET +${SF_PROFILE_BONUS} POINTS`]} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+        <Header back />
+        {!profile && <div className="box p-6 flex flex-col gap-3 items-start"><p className="font-medium">Sign in to fill in your profile.</p><button className="btn bg-neon" onClick={() => openAccount(null)}>Sign in / Register</button></div>}
+        {profile && !isJoined(me) && <div className="box p-6 flex flex-col gap-3 items-start"><p className="font-medium">Join the Secret friend game first — then you can fill in your profile.</p><Link to="/secret-friend" className="btn bg-neon">← Secret friend page</Link></div>}
+        {profile && isJoined(me) && (
+          <>
+            <div className={`border-[3px] border-ink rounded-xl shadow-b6 p-4 sm:p-6 flex flex-wrap items-center justify-between gap-4 ${got ? 'bg-neon' : 'bg-sun'}`}>
+              <div>
+                <div className="font-mono text-xs font-bold uppercase">{got ? 'Profile complete' : 'Bonus'}</div>
+                <h1 className="text-2xl sm:text-4xl font-extrabold uppercase leading-tight">{got ? `✓ You got +${SF_PROFILE_BONUS} points` : `Fill in your profile — get +${SF_PROFILE_BONUS} points`}</h1>
+                <p className="font-bold mt-1 max-w-2xl">{got ? 'Thank you! Your secret friend can now surprise you the right way. You can still edit everything.' : `Write a few words (at least ${SF_PROFILE_MIN} characters) in every section — your secret friend will see it and you get the points once. Everything is optional, the photo too.`}</p>
+              </div>
+              <div className="border-[3px] border-ink rounded-xl bg-white px-4 py-2 text-center shadow-b4"><div className="text-3xl font-extrabold">{progress.done}/{progress.total}</div><div className="font-mono text-[11px] uppercase font-bold">sections</div></div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="lg:col-span-7 flex flex-col gap-6">
+                <Win title="DOSSIER-CREATOR // MY-WISHLIST.TXT" right={<span className="tag bg-neon text-ink">VISIBLE ONLY TO YOUR SECRET FRIEND</span>}>
+                  <div className="p-4 sm:p-6 bg-paper flex flex-col gap-5">
+                    <div className="border-[3px] border-ink rounded-xl shadow-b6 bg-sun p-4 flex flex-wrap items-center gap-5">
+                      <Avatar photo={form.photo} name={profile.name} />
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-2xl sm:text-4xl font-extrabold uppercase leading-none break-words">{profile.name}</h2>
+                        {countryOfId(profile.id) && <div className="font-mono text-sm font-bold mt-1">from {countryOfId(profile.id)}</div>}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
+                          <button type="button" className="btn bg-white !px-3 !py-1.5 text-xs" onClick={() => fileRef.current?.click()}>{form.photo ? 'Change photo' : '📷 Add a photo (optional)'}</button>
+                          {form.photo && <button type="button" className="btn bg-white !px-3 !py-1.5 text-xs" onClick={() => set('photo', '')}>Remove</button>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {SF_PROFILE_FIELDS.map((f, i) => (
+                      <div key={f.id} className={`border-[3px] border-ink rounded-xl shadow-b4 p-4 flex flex-col gap-2 ${f.danger ? 'bg-hot/15' : 'bg-white'}`}>
+                        <label className="font-mono text-xs font-bold uppercase flex flex-wrap items-center justify-between gap-2" htmlFor={`sf-${f.id}`}>
+                          <span>{String(i + 1).padStart(2, '0')} // {f.icon} {f.title}</span>
+                          <span className={`tag ${progress.fields[i].ok ? 'bg-neon' : 'bg-white'}`}>{progress.fields[i].ok ? '✓ DONE' : 'OPTIONAL'}</span>
+                        </label>
+                        <textarea id={`sf-${f.id}`} className="input !shadow-none" rows={3} maxLength={SF_PROFILE_MAX} placeholder={f.ph} value={form[f.id] || ''} onChange={(e) => set(f.id, e.target.value)} />
+                        <div className="font-mono text-[11px] text-mute text-right">{(form[f.id] || '').length} / {SF_PROFILE_MAX}</div>
+                      </div>
+                    ))}
+
+                    {msg && <p className="font-mono text-sm font-bold text-hot">{msg}</p>}
+                    {ok && <p className="border-[3px] border-ink rounded-xl bg-neon px-4 py-3 font-bold shadow-b4">{ok}</p>}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button className="btn bg-sun disabled:opacity-50" disabled={busy} onClick={save}>{busy ? '…' : '💾 Save profile'}</button>
+                      <Link to="/secret-friend" className="btn bg-white">← Back</Link>
+                    </div>
+                  </div>
+                </Win>
+              </div>
+
+              <div className="lg:col-span-5 flex flex-col gap-6">
+                <ChatFromFriend me={me} />
+                <div className="box shadow-b6 overflow-hidden">
+                  <div className="bg-ink text-white px-4 py-2 font-mono text-xs font-bold uppercase flex justify-between"><span>Profile checklist</span><span className="text-sun">{progress.done}/{progress.total}</span></div>
+                  <div className="p-4 bg-white flex flex-col gap-2">
+                    {progress.fields.map((f) => (
+                      <div key={f.id} className={`border-[3px] border-ink rounded-lg px-3 py-2 flex items-center gap-3 text-sm font-bold ${f.ok ? 'bg-neon' : 'bg-white border-dashed'}`}>
+                        <span className="font-mono">{f.ok ? '✓' : '○'}</span><span>{f.title}</span>
+                      </div>
+                    ))}
+                    <p className="font-mono text-[11px] text-mute mt-1">Your secret friend sees only this profile and your questions’ answers — never your account.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
+}

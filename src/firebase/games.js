@@ -1,9 +1,10 @@
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, runTransaction, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, runTransaction, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
 import { db } from './config.js';
+import { KILL_STORY_MAX, SF_PROFILE_BONUS, SF_PROFILE_MIN, SF_PROFILE_MAX, SF_PROFILE_FIELDS } from '../config/settings.js';
 
 /*
   Firestore collections
-  Secret friend:  sfPlayers/{userId}   sfClaims/{targetId}
+  Secret friend:  sfPlayers/{userId}   sfClaims/{targetId}   sfQuestions/{id}   sfDaily/{giverId_day}   (chat: see chat.js)
   Killer game:    kgPlayers/{userId}   kgClaims/{targetId}   kgItemClaims/{ownerId}
   Settings:       gameConfig/{sf|kg}   -> { excluded: [userId, ...] }  (people the admin switched off)
 
@@ -12,7 +13,7 @@ import { db } from './config.js';
   Transactions on these documents guarantee that one name is never given to two players.
 */
 export const GAMES = {
-  sf: { players: 'sfPlayers', claims: 'sfClaims' },
+  sf: { players: 'sfPlayers', claims: 'sfClaims', chat: 'sfQuestions', daily: 'sfDaily' },   // chat + daily counters are cleared with the game
   kg: { players: 'kgPlayers', claims: 'kgClaims', itemClaims: 'kgItemClaims' },
 };
 
@@ -35,20 +36,47 @@ export const subscribeExcluded = (game, cb, onErr) =>
 /* ---------- join ----------
    The participant is already signed in to their account, so nothing is typed except
    the item in Killer game. */
-export async function joinGame(game, userId, item, wishes = {}) {
+export async function joinGame(game, userId, item) {
   const ref = doc(db, GAMES[game].players, userId);
   const snap = await getDoc(ref);
   if (snap.exists() && isJoined(snap.data())) throw fail('exists', 'You have already joined this game.');
   if (snap.exists() && snap.data().dead) throw fail('dead', 'You have been eliminated and cannot join.');
   const data = { userId, joined: true, targetId: null, targetName: null, joinedAt: serverTimestamp() };
-  if (game === 'sf') Object.assign(data, { likes: String(wishes.likes || '').trim().slice(0, 400), dislikes: String(wishes.dislikes || '').trim().slice(0, 400) });
   if (game === 'kg') Object.assign(data, { item: String(item || '').trim(), itemOwnerId: null, itemText: null, kills: 0, dead: false });
   await setDoc(ref, data);
 }
 
-/* Secret friend: what I like / do not like. The person who got my name (my secret friend) sees it. */
-export const saveWishes = (userId, likes, dislikes) =>
-  updateDoc(doc(db, GAMES.sf.players, userId), { likes: String(likes || '').trim().slice(0, 400), dislikes: String(dislikes || '').trim().slice(0, 400) });
+/* Secret friend profile: everything is optional (also the photo). The person who got my name (my secret friend) sees it.
+   When all text fields are filled in properly (SF_PROFILE_MIN characters each) the person gets SF_PROFILE_BONUS points — once. */
+export function sfProgress(profile) {
+  const p = profile || {};
+  const fields = SF_PROFILE_FIELDS.map((f) => ({ ...f, ok: String(p[f.id] || '').trim().length >= SF_PROFILE_MIN }));
+  const done = fields.filter((f) => f.ok).length;
+  return { fields, done, total: fields.length, complete: done === fields.length };
+}
+
+export async function saveSfProfile(userId, input) {
+  const clean = {};
+  SF_PROFILE_FIELDS.forEach((f) => { clean[f.id] = String(input[f.id] || '').trim().slice(0, SF_PROFILE_MAX); });
+  clean.photo = typeof input.photo === 'string' && input.photo.startsWith('data:image/') && input.photo.length < 300000 ? input.photo : '';
+  const complete = sfProgress(clean).complete;
+  const pRef = doc(db, GAMES.sf.players, userId);
+  const uRef = doc(db, 'users', userId);
+  return runTransaction(db, async (tx) => {
+    const [p, u] = await Promise.all([tx.get(pRef), tx.get(uRef)]);
+    if (!p.exists() || !isJoined(p.data())) throw fail('missing', 'Join the Secret friend game first.');
+    const patch = { profile: clean, profileUpdatedAt: serverTimestamp() };
+    let bonus = false;
+    if (complete && !p.data().profileBonus && u.exists()) {
+      bonus = true;
+      patch.profileBonus = true;
+      tx.update(uRef, { score: increment(SF_PROFILE_BONUS) });
+      tx.set(doc(collection(db, 'pointsLog')), { userId, delta: SF_PROFILE_BONUS, reason: 'Secret friend: filled in the profile', createdAt: serverTimestamp() });
+    }
+    tx.update(pRef, patch);
+    return { bonus };
+  });
+}
 
 /* ---------- assignment ----------
   Everyone who plays is a node of a graph "who -> whom". Each new assignment is an edge giver -> target.
@@ -158,7 +186,7 @@ export async function claimResult(game, userId, userIds, nameOf) {
   The hunter inherits the victim's contract: the victim's target and the victim's item.
   If the victim had not received a target yet, the hunter simply draws a new one with the button.
 */
-export async function killPlayer(victimId, killerId, nameOf) {
+export async function killPlayer(victimId, killerId, nameOf, story = null) {   // story = { text, difficulty } or null (the hunter kept it secret)
   const cfg = GAMES.kg;
   return runTransaction(db, async (tx) => {
     const vRef = doc(db, cfg.players, victimId);
@@ -173,7 +201,9 @@ export async function killPlayer(victimId, killerId, nameOf) {
       if (k.targetId !== victimId) throw fail('target', 'This is no longer your victim.');
     }
     const next = v.targetId || null;
-    const dead = { dead: true, killedBy: killerId || null, killedAt: serverTimestamp(), targetId: v.targetId || null, killUndo: null };
+    const dead = { dead: true, killedBy: killerId || null, killedAt: serverTimestamp(), targetId: v.targetId || null, killUndo: null,
+      killStory: story && story.text ? { text: String(story.text).trim().slice(0, KILL_STORY_MAX), difficulty: story.difficulty || '' } : null,
+      killSecret: !!killerId && !(story && story.text) };
     tx.delete(doc(db, cfg.claims, victimId));                              // nobody hunts the dead player any more
     if (kSnap) {
       const k = kSnap.data();
@@ -215,7 +245,7 @@ export async function revivePlayer(victimId, nameOf) {
     const [kSnap, nSnap, nPlayer] = await Promise.all([kRef ? tx.get(kRef) : null, nRef ? tx.get(nRef) : null, next ? tx.get(doc(db, cfg.players, next)) : null]);
 
     let nextOk = !!next && !(nPlayer?.exists() && nPlayer.data().dead);    // the old target must still be alive
-    const revived = { dead: false, killedBy: null, killedAt: null, killUndo: null };
+    const revived = { dead: false, killedBy: null, killedAt: null, killUndo: null, killStory: null, killSecret: false };
 
     if (kSnap) {
       const k = kSnap.exists() ? kSnap.data() : null;

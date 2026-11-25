@@ -1,3 +1,4 @@
+import { KILL_MOODS } from '../../config/settings.js';
 import { useApp } from '../../context/AppContext.jsx';
 import * as games from '../../firebase/games.js';
 import { isJoined } from '../../firebase/games.js';
@@ -83,7 +84,9 @@ function Links({ game, title, cls }) {
                 {game === 'kg' && <>
                   <td className="p-3">{p.itemText || <span className="text-mute">—</span>}</td>
                   <td className="p-3">{p.item}</td>
-                  <td className="p-3"><span className={`tag ${p.dead ? 'bg-hot text-white' : 'bg-neon text-ink'}`}>{p.dead ? 'KILLED' : 'ALIVE'}</span></td>
+                  <td className="p-3"><span className={`tag ${p.dead ? 'bg-hot text-white' : 'bg-neon text-ink'}`}>{p.dead ? 'KILLED' : 'ALIVE'}</span>
+                    {p.dead && p.killStory && <div className="mt-1 text-xs text-ink max-w-xs whitespace-normal">{KILL_MOODS.find((m) => m.id === p.killStory.difficulty)?.label} “{p.killStory.text}”</div>}
+                    {p.dead && p.killSecret && <div className="mt-1 text-xs text-mute">story kept secret</div>}</td>
                   <td className="p-3">{p.dead
                     ? <button className="tag bg-neon text-ink" onClick={() => revive(p.id)} title="Undo the kill">↩ REVIVE</button>
                     : <button className="tag bg-white" onClick={() => kill(p.id)}>ELIMINATE</button>}</td>

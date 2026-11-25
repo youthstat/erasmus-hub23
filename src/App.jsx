@@ -11,6 +11,8 @@ import OscarVotePage from './pages/OscarVotePage.jsx';
 import HelpPage from './pages/HelpPage.jsx';
 import GossipBoardPage from './pages/GossipBoardPage.jsx';
 import PunishmentPage from './pages/PunishmentPage.jsx';
+import SfBuddyPage from './pages/SfBuddyPage.jsx';
+import SfProfilePage from './pages/SfProfilePage.jsx';
 import Gate from './components/layout/Gate.jsx';
 import Mascot from './components/mascot/Mascot.jsx';
 import ModalHost from './components/modals/ModalHost.jsx';
@@ -57,6 +59,8 @@ export default function App() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/schedule" element={<Gate id="schedule"><PlaceholderPage title="Schedule & timeline" /></Gate>} />
         <Route path="/secret-friend" element={<Gate id="secret-friend"><SecretFriendPage /></Gate>} />
+        <Route path="/secret-friend/buddy" element={<Gate id="secret-friend"><SfBuddyPage /></Gate>} />
+        <Route path="/secret-friend/my-profile" element={<Gate id="secret-friend"><SfProfilePage /></Gate>} />
         <Route path="/killer-game" element={<Gate id="killer-game"><KillerGamePage /></Gate>} />
         <Route path="/reflection" element={<Gate id="reflection"><ReflectionPage /></Gate>} />
         <Route path="/oscar" element={<Gate id="oscar"><OscarPage /></Gate>} />
