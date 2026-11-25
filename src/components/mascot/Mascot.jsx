@@ -48,6 +48,22 @@ const JOKES_PAGE = {
     'And the Oscar for Best Dramatic Cheese-Eating goes to… ME! 🏆✨',
     'I’m ready for my close-up! Just don’t film my tail, it gets stage fright. 🎬',
   ],
+  schedule: [
+    'Tick-tock! ⌚ Checking my tiny watch so we don’t miss the next session!',
+    'Am I early or fashionably late? Let’s check the timeline! ⏰🐭',
+  ],
+  game2048: [
+    'Just one more swipe… I’m SO close to the 2048 tile! 🎮✨',
+    'My paws are warmed up and ready to beat the leaderboard! ⌨️🐭',
+  ],
+  gossip: [
+    'I want more gossip! Tell me everything — my notebook is ready! 📝🤫',
+    'Ooh, juicy whispers! Keep ’em coming, nobody will ever know it was you! 💋',
+  ],
+  reflect: [
+    'Taking a quiet moment to reflect on today’s memories… 🌱🪞',
+    'Mirror, mirror on the wall, who had the best Erasmus+ day of all? ✨',
+  ],
 };
 
 const JOKES_THANKS_GOSSIP = [
@@ -111,6 +127,42 @@ function themeForPath(pathname) {
       peek: ['oscar1', 'oscar2'],
       edge: 'oscar2',
       hello: 'oscar3',
+    };
+  }
+  if (pathname.startsWith('/schedule')) {
+    return {
+      key: 'schedule',
+      sit: ['watch1', 'watch2', 'watch3', 'watch4'],
+      peek: ['watch3', 'watch4'],
+      edge: 'watch2',
+      hello: 'watch1',
+    };
+  }
+  if (pathname.startsWith('/mouse-run')) {
+    return {
+      key: 'game2048',
+      sit: ['play2048_1', 'play2048_2', 'play2048_3', 'play2048_4'],
+      peek: ['play2048_1', 'play2048_3'],
+      edge: 'play2048_2',
+      hello: 'play2048_3',
+    };
+  }
+  if (pathname.startsWith('/gossips')) {
+    return {
+      key: 'gossip',
+      sit: ['gossip1', 'gossip2', 'gossip3', 'gossip4'],
+      peek: ['gossip2', 'gossip4'],
+      edge: 'gossip2',
+      hello: 'gossip2',
+    };
+  }
+  if (pathname.startsWith('/reflection')) {
+    return {
+      key: 'reflect',
+      sit: ['reflect1', 'reflect2', 'reflect3', 'reflect4'],
+      peek: ['reflect1', 'reflect2'],
+      edge: 'reflect2',
+      hello: 'reflect4',
     };
   }
   return {
@@ -671,7 +723,19 @@ export default function Mascot() {
             {phase === 'deal-done' && dealDoneInfo?.kind === 'gift' && (
               <span className="mascot-float absolute left-1/2 -top-2 -translate-x-1/2 border-2 border-ink bg-sun rounded px-2 py-0.5 font-mono font-bold text-sm shadow-b2">🎁 −{dealDoneInfo.amount}</span>
             )}
-            <img src={s.src} alt="" draggable={false} style={{ width: s.w * k, height: s.h * k }} />
+            <img
+              src={s.src}
+              alt=""
+              draggable={false}
+              decoding="async"
+              style={{
+                width: s.w * k,
+                height: s.h * k,
+                maxWidth: '30vw',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 3px 0 rgba(17,17,17,0.16))',
+              }}
+            />
           </div>
         </div>
       </div>
@@ -694,16 +758,16 @@ export default function Mascot() {
     <div className="absolute left-0 top-0 w-full h-0 z-40 pointer-events-none" style={{ overflowX: 'clip' }}>
       <div role="button" tabIndex={0} title="Don’t click me!" aria-label="Rattie Patty — please don’t click"
         onClick={onClick} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick()}
-        className="absolute cursor-pointer focus:outline-none"
+        className="absolute cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt focus-visible:rounded-xl hover:scale-110 transition-transform duration-150"
         style={{
           left: p.left, top: p.top, width: p.cw, height: BOX_H,
           pointerEvents: scene.dive >= 0.95 ? 'none' : 'auto',
-          transition: scene.instant ? 'none' : scene.walking ? `left ${scene.ms}ms linear, top ${scene.ms}ms linear` : 'none',
+          transition: scene.instant ? 'transform 150ms ease' : scene.walking ? `left ${scene.ms}ms linear, top ${scene.ms}ms linear, transform 150ms ease` : 'transform 150ms ease',
         }}>
         <div className={anim}>
           <div style={{ width: p.cw, height: BOX_H, overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: edge ? 'flex-start' : 'center' }}>
-            <img src={sp.src} alt="" draggable={false}
-              style={{ width: w, height: h, flexShrink: 0, userSelect: 'none', transform: `translate(${tx}px, ${ty}px) scaleX(${scene.flip})`, transition: 'transform .45s ease' }} />
+            <img src={sp.src} alt="" draggable={false} decoding="async"
+              style={{ width: w, height: h, objectFit: 'contain', flexShrink: 0, userSelect: 'none', filter: 'drop-shadow(0 2px 1px rgba(17,17,17,0.18))', transform: `translate(${tx}px, ${ty}px) scaleX(${scene.flip})`, transition: 'transform .45s ease' }} />
           </div>
         </div>
 

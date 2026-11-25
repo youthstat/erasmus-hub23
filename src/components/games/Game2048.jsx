@@ -2,118 +2,202 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { SPRITES } from '../mascot/sprites.js';
 
 const SIZE = 4;
+const MUTE_KEY = 'rattie2048_muted';
 
-const emptyGrid = () => Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+const TILE_STYLE = {
+  2: 'bg-[#FFF3B0] text-ink',
+  4: 'bg-[#FFE600] text-ink',
+  8: 'bg-[#FF9F1C] text-ink',
+  16: 'bg-[#FF4365] text-white',
+  32: 'bg-[#FF007F] text-white',
+  64: 'bg-[#00FF66] text-ink',
+  128: 'bg-[#00E5FF] text-ink',
+  256: 'bg-[#2E5BFF] text-white',
+  512: 'bg-[#9D4EDD] text-white',
+  1024: 'bg-[#FF5400] text-white ring-2 ring-sun',
+  2048: 'bg-ink text-[#00FF66] ring-4 ring-[#FFE600]',
+};
 
-function addRandomTile(grid) {
+const tileCls = (v) => TILE_STYLE[v] || 'bg-[#FF0055] text-[#FFE600] ring-4 ring-white';
+const tileFont = (v) => (v >= 1024 ? 'text-xl sm:text-2xl' : v >= 128 ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl');
+
+function createAudioEngine() {
+  let ctx = null;
+  const getCtx = () => {
+    if (typeof window === 'undefined') return null;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!ctx) ctx = new AudioCtx();
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    return ctx;
+  };
+
+  const playTone = (freq, endFreq, duration, type = 'sine', gainVal = 0.08, delay = 0) => {
+    const c = getCtx();
+    if (!c) return;
+    const t0 = c.currentTime + delay;
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    if (endFreq !== freq) osc.frequency.exponentialRampToValueAtTime(Math.max(40, endFreq), t0 + duration);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(gainVal, t0 + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.015);
+  };
+
+  return {
+    unlock: () => { getCtx(); },
+    slide: () => playTone(210, 145, 0.07, 'triangle', 0.065),
+    merge: (maxVal) => {
+      const step = Math.min(10, Math.max(1, Math.log2(maxVal || 4)));
+      const base = 290 + step * 48;
+      playTone(base, base * 1.28, 0.11, 'sine', 0.09);
+      playTone(base * 1.5, base * 1.65, 0.09, 'triangle', 0.05, 0.03);
+    },
+    win: () => {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playTone(f, f, 0.18, 'triangle', 0.08, i * 0.07));
+    },
+    over: () => {
+      playTone(260, 130, 0.25, 'sawtooth', 0.05);
+    },
+  };
+}
+
+function makeGridFromTiles(tiles) {
+  const g = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+  for (const t of tiles) {
+    if (!t.dying) g[t.row][t.col] = t;
+  }
+  return g;
+}
+
+function spawnTile(tiles, nextIdRef) {
+  const occupied = new Set(tiles.filter((t) => !t.dying).map((t) => `${t.row},${t.col}`));
   const empty = [];
   for (let r = 0; r < SIZE; r++) {
     for (let c = 0; c < SIZE; c++) {
-      if (grid[r][c] === 0) empty.push([r, c]);
+      if (!occupied.has(`${r},${c}`)) empty.push([r, c]);
     }
   }
-  if (!empty.length) return grid;
-  const [r, c] = empty[Math.floor(Math.random() * empty.length)];
-  const next = grid.map((row) => [...row]);
-  next[r][c] = Math.random() < 0.9 ? 2 : 4;
-  return next;
+  if (!empty.length) return tiles;
+  const [row, col] = empty[Math.floor(Math.random() * empty.length)];
+  const value = Math.random() < 0.9 ? 2 : 4;
+  return [...tiles, { id: nextIdRef.current++, value, row, col, isNew: true }];
 }
 
-function initGrid() {
-  return addRandomTile(addRandomTile(emptyGrid()));
+function createInitialTiles(nextIdRef) {
+  let t = spawnTile([], nextIdRef);
+  t = spawnTile(t, nextIdRef);
+  return t;
 }
 
-function slideLine(line) {
-  const nums = line.filter((n) => n !== 0);
-  const merged = [];
-  let gained = 0;
-  for (let i = 0; i < nums.length; i++) {
-    if (i + 1 < nums.length && nums[i] === nums[i + 1]) {
-      const val = nums[i] * 2;
-      merged.push(val);
-      gained += val;
-      i++;
-    } else {
-      merged.push(nums[i]);
-    }
-  }
-  while (merged.length < SIZE) merged.push(0);
-  return { line: merged, gained };
-}
-
-function moveGrid(grid, dir) {
-  const next = emptyGrid();
-  let gained = 0;
+function moveTiles(currentTiles, dir, nextIdRef) {
+  const active = currentTiles.filter((t) => !t.dying);
+  const grid = makeGridFromTiles(active);
+  const nextTiles = [];
   let moved = false;
+  let gained = 0;
+  let maxMerged = 0;
+
+  const coordFor = (lineIdx, pos) => {
+    if (dir === 'left') return [lineIdx, pos];
+    if (dir === 'right') return [lineIdx, SIZE - 1 - pos];
+    if (dir === 'up') return [pos, lineIdx];
+    return [SIZE - 1 - pos, lineIdx];
+  };
 
   for (let i = 0; i < SIZE; i++) {
-    const raw = [];
+    const line = [];
     for (let j = 0; j < SIZE; j++) {
-      if (dir === 'left') raw.push(grid[i][j]);
-      else if (dir === 'right') raw.push(grid[i][SIZE - 1 - j]);
-      else if (dir === 'up') raw.push(grid[j][i]);
-      else raw.push(grid[SIZE - 1 - j][i]);
+      const [r, c] = coordFor(i, j);
+      if (grid[r][c]) line.push(grid[r][c]);
     }
-    const { line, gained: g } = slideLine(raw);
-    gained += g;
-    for (let j = 0; j < SIZE; j++) {
-      if (line[j] !== raw[j]) moved = true;
-      if (dir === 'left') next[i][j] = line[j];
-      else if (dir === 'right') next[i][SIZE - 1 - j] = line[j];
-      else if (dir === 'up') next[j][i] = line[j];
-      else next[SIZE - 1 - j][i] = line[j];
+
+    let targetPos = 0;
+    for (let k = 0; k < line.length; k++) {
+      const a = line[k];
+      const b = line[k + 1];
+      const [row, col] = coordFor(i, targetPos);
+
+      if (b && a.value === b.value) {
+        if (a.row !== row || a.col !== col || b.row !== row || b.col !== col) moved = true;
+        else moved = true;
+        const val = a.value * 2;
+        gained += val;
+        if (val > maxMerged) maxMerged = val;
+
+        nextTiles.push({ ...a, row, col, dying: true, isNew: false, isMerged: false });
+        nextTiles.push({ ...b, row, col, dying: true, isNew: false, isMerged: false });
+        nextTiles.push({ id: nextIdRef.current++, value: val, row, col, isMerged: true, isNew: false });
+        k++;
+        targetPos++;
+      } else {
+        if (a.row !== row || a.col !== col) moved = true;
+        nextTiles.push({ ...a, row, col, isNew: false, isMerged: false });
+        targetPos++;
+      }
     }
   }
 
-  return { next, gained, moved };
+  return { nextTiles, moved, gained, maxMerged };
 }
 
-function canMove(grid) {
+function canMoveTiles(tiles) {
+  const active = tiles.filter((t) => !t.dying);
+  if (active.length < SIZE * SIZE) return true;
+  const g = makeGridFromTiles(active);
   for (let r = 0; r < SIZE; r++) {
     for (let c = 0; c < SIZE; c++) {
-      const v = grid[r][c];
-      if (v === 0) return true;
-      if (r + 1 < SIZE && grid[r + 1][c] === v) return true;
-      if (c + 1 < SIZE && grid[r][c + 1] === v) return true;
+      const v = g[r][c]?.value;
+      if (!v) return true;
+      if (r + 1 < SIZE && g[r + 1][c]?.value === v) return true;
+      if (c + 1 < SIZE && g[r][c + 1]?.value === v) return true;
     }
   }
   return false;
 }
 
-function has2048(grid) {
-  return grid.some((row) => row.some((v) => v >= 2048));
+function has2048Tile(tiles) {
+  return tiles.some((t) => !t.dying && t.value >= 2048);
 }
 
-const TILE_STYLE = {
-  0: 'bg-paper text-transparent',
-  2: 'bg-white text-ink',
-  4: 'bg-[#FFF3B0] text-ink',
-  8: 'bg-sun text-ink',
-  16: 'bg-[#FFB3C6] text-ink',
-  32: 'bg-hot text-white',
-  64: 'bg-[#FF6B35] text-white',
-  128: 'bg-neon text-ink',
-  256: 'bg-cobalt text-white',
-  512: 'bg-[#C9B8FF] text-ink',
-  1024: 'bg-ink text-sun',
-  2048: 'bg-ink text-neon ring-2 ring-sun',
-};
-
-const tileCls = (v) => TILE_STYLE[v] || 'bg-ink text-neon';
-const tileFont = (v) => (v >= 1024 ? 'text-xl sm:text-2xl' : v >= 128 ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl');
-
 export default function Game2048({ signedIn, serverBest, onSignIn, onSaveScore }) {
-  const [grid, setGrid] = useState(initGrid);
+  const nextIdRef = useRef(1);
+  const [tiles, setTiles] = useState(() => createInitialTiles(nextIdRef));
   const [score, setScore] = useState(0);
   const [localBest, setLocalBest] = useState(0);
   const [wonAck, setWonAck] = useState(false);
   const [over, setOver] = useState(false);
   const [savedMsg, setSavedMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  const [muted, setMuted] = useState(() => {
+    try { return localStorage.getItem(MUTE_KEY) === '1'; } catch { return false; }
+  });
+
   const touchStart = useRef(null);
-  const boardRef = useRef(null);
   const pointerStart = useRef(null);
+  const boardRef = useRef(null);
   const lastSavedRef = useRef(0);
+  const audioRef = useRef(null);
+  const cleanupTimerRef = useRef(null);
+  const mutedRef = useRef(muted);
+  const wonSoundPlayedRef = useRef(false);
+
+  if (!audioRef.current) audioRef.current = createAudioEngine();
+
+  useEffect(() => {
+    mutedRef.current = muted;
+    try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch { /* ignore */ }
+  }, [muted]);
+
+  useEffect(() => () => {
+    if (cleanupTimerRef.current) clearTimeout(cleanupTimerRef.current);
+  }, []);
 
   const best = Math.max(localBest, serverBest || 0);
 
@@ -140,7 +224,6 @@ export default function Game2048({ signedIn, serverBest, onSignIn, onSaveScore }
     }
   }, [signedIn, onSaveScore]);
 
-  // Auto-save whenever player beats their saved best (debounced so every move doesn't spam writes)
   useEffect(() => {
     if (!signedIn || score <= lastSavedRef.current) return;
     const t = setTimeout(() => persistScore(score), over ? 100 : 1800);
@@ -148,24 +231,52 @@ export default function Game2048({ signedIn, serverBest, onSignIn, onSaveScore }
   }, [score, over, signedIn, persistScore]);
 
   const step = useCallback((dir) => {
-    setGrid((prev) => {
-      if (over) return prev;
-      const { next, gained, moved } = moveGrid(prev, dir);
+    if (over) return;
+    audioRef.current.unlock();
+
+    setTiles((prev) => {
+      const { nextTiles, moved, gained, maxMerged } = moveTiles(prev, dir, nextIdRef);
       if (!moved) return prev;
-      const spawned = addRandomTile(next);
-      setScore((s) => {
-        const ns = s + gained;
-        setLocalBest((b) => Math.max(b, ns));
-        return ns;
-      });
-      if (!canMove(spawned)) setOver(true);
-      return spawned;
+
+      const withSpawn = spawnTile(nextTiles, nextIdRef);
+      const isNowOver = !canMoveTiles(withSpawn);
+      const reached2048 = !wonSoundPlayedRef.current && has2048Tile(withSpawn);
+
+      if (!mutedRef.current) {
+        if (reached2048) {
+          wonSoundPlayedRef.current = true;
+          audioRef.current.win();
+        } else if (maxMerged > 0) {
+          audioRef.current.merge(maxMerged);
+        } else {
+          audioRef.current.slide();
+        }
+        if (isNowOver) setTimeout(() => !mutedRef.current && audioRef.current.over(), 120);
+      }
+
+      if (gained > 0) {
+        setScore((s) => {
+          const ns = s + gained;
+          setLocalBest((b) => Math.max(b, ns));
+          return ns;
+        });
+      }
+      if (isNowOver) setOver(true);
+
+      if (cleanupTimerRef.current) clearTimeout(cleanupTimerRef.current);
+      cleanupTimerRef.current = setTimeout(() => {
+        setTiles((cur) => cur.filter((t) => !t.dying));
+      }, 145);
+
+      return withSpawn;
     });
   }, [over]);
 
   const restart = () => {
+    if (cleanupTimerRef.current) clearTimeout(cleanupTimerRef.current);
     if (signedIn && score > lastSavedRef.current) persistScore(score);
-    setGrid(initGrid());
+    wonSoundPlayedRef.current = false;
+    setTiles(createInitialTiles(nextIdRef));
     setScore(0);
     setOver(false);
     setWonAck(false);
@@ -191,7 +302,7 @@ export default function Game2048({ signedIn, serverBest, onSignIn, onSaveScore }
     return () => window.removeEventListener('keydown', onKey);
   }, [step]);
 
-  // Reliable non-passive touch swipe on the board (prevents page scroll / pull-to-refresh on mobile)
+  // Reliable non-passive touch swipe on the board
   useEffect(() => {
     const el = boardRef.current;
     if (!el) return;
@@ -203,6 +314,7 @@ export default function Game2048({ signedIn, serverBest, onSignIn, onSaveScore }
 
     const onTouchStart = (e) => {
       if (e.touches.length !== 1) return;
+      audioRef.current.unlock();
       const t = e.touches[0];
       touchStart.current = { x: t.clientX, y: t.clientY, handled: false };
     };
@@ -214,7 +326,7 @@ export default function Game2048({ signedIn, serverBest, onSignIn, onSaveScore }
       const t = e.touches[0];
       const dx = t.clientX - touchStart.current.x;
       const dy = t.clientY - touchStart.current.y;
-      if (Math.max(Math.abs(dx), Math.abs(dy)) >= 22) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) >= 20) {
         touchStart.current.handled = true;
         triggerSwipe(dx, dy);
       }
@@ -226,7 +338,7 @@ export default function Game2048({ signedIn, serverBest, onSignIn, onSaveScore }
       if (!touchStart.current.handled && t) {
         const dx = t.clientX - touchStart.current.x;
         const dy = t.clientY - touchStart.current.y;
-        if (Math.max(Math.abs(dx), Math.abs(dy)) >= 18) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) >= 16) {
           triggerSwipe(dx, dy);
         }
       }
@@ -249,9 +361,10 @@ export default function Game2048({ signedIn, serverBest, onSignIn, onSaveScore }
     };
   }, [step]);
 
-  // Mouse / stylus drag swipe fallback (touch handled above via non-passive listeners)
+  // Mouse / stylus drag fallback
   const onPointerDown = (e) => {
     if (e.pointerType === 'touch') return;
+    audioRef.current.unlock();
     pointerStart.current = { x: e.clientX, y: e.clientY };
   };
   const onPointerUp = (e) => {
@@ -264,26 +377,26 @@ export default function Game2048({ signedIn, serverBest, onSignIn, onSaveScore }
     else step(dy > 0 ? 'down' : 'up');
   };
 
-  const won = !wonAck && has2048(grid);
-  const mascot = over ? SPRITES.think : won ? SPRITES.thanks : score > 500 ? SPRITES.jump : SPRITES.hello;
+  const won = !wonAck && has2048Tile(tiles);
+  const mascot = over ? SPRITES.play2048_2 : won ? SPRITES.play2048_3 : score > 200 ? SPRITES.play2048_3 : SPRITES.play2048_1;
 
   return (
-    <div className="box shadow-b8 p-4 sm:p-6 max-w-md w-full mx-auto flex flex-col gap-4 select-none">
+    <div className="box shadow-b8 p-4 sm:p-6 max-w-md w-full mx-auto flex flex-col gap-3.5 select-none">
       {/* Score & controls */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <img src={mascot.src} alt="" draggable={false} className="w-11 h-11 object-contain" />
+        <div className="flex items-center gap-2 min-w-0">
+          <img src={mascot.src} alt="" draggable={false} className="w-10 h-10 sm:w-11 sm:h-11 object-contain shrink-0" />
           <div>
             <div className="text-2xl font-extrabold uppercase leading-none">2048</div>
             <div className="font-mono text-[11px] text-mute">Rattie Edition</div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <div className="border-[3px] border-ink rounded-xl bg-sun px-3 py-1.5 text-center min-w-[74px]">
+        <div className="flex gap-2 shrink-0">
+          <div className="border-[3px] border-ink rounded-xl bg-sun px-3 py-1.5 text-center min-w-[70px]">
             <div className="font-mono text-[10px] font-bold uppercase">Score</div>
             <div className="font-mono text-base font-extrabold leading-tight">{score}</div>
           </div>
-          <div className="border-[3px] border-ink rounded-xl bg-neon px-3 py-1.5 text-center min-w-[74px]">
+          <div className="border-[3px] border-ink rounded-xl bg-neon px-3 py-1.5 text-center min-w-[70px]">
             <div className="font-mono text-[10px] font-bold uppercase">Best</div>
             <div className="font-mono text-base font-extrabold leading-tight">{best}</div>
           </div>
@@ -294,33 +407,63 @@ export default function Game2048({ signedIn, serverBest, onSignIn, onSaveScore }
         <span className="font-mono text-xs text-mute">
           {signedIn ? (saving ? 'Saving…' : savedMsg || 'Best score saves automatically') : 'Sign in to save your score'}
         </span>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           {!signedIn && (
             <button type="button" onClick={onSignIn} className="tag bg-neon text-ink">Sign in</button>
           )}
+          <button
+            type="button"
+            onClick={() => setMuted((m) => !m)}
+            aria-label={muted ? 'Unmute sound' : 'Mute sound'}
+            title={muted ? 'Sound off — click to unmute' : 'Sound on — click to mute'}
+            className={`btn text-xs px-2.5 py-1.5 ${muted ? 'bg-paper text-mute' : 'bg-sun text-ink'}`}
+          >
+            {muted ? '🔇' : '🔊'}
+          </button>
           <button type="button" onClick={restart} className="btn bg-white text-xs px-3 py-1.5">↻ New game</button>
         </div>
       </div>
 
-      {/* 4x4 Grid */}
+      {/* 4x4 Sliding Board */}
       <div
         ref={boardRef}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
         style={{ touchAction: 'none' }}
-        className="relative bg-ink border-[3px] border-ink rounded-2xl p-2.5 sm:p-3 grid grid-cols-4 gap-2 sm:gap-2.5 touch-none overscroll-none select-none"
+        className="relative bg-ink border-[3px] border-ink rounded-2xl p-2.5 sm:p-3 aspect-square [--g:8px] sm:[--g:10px] touch-none overscroll-none select-none"
       >
-        {grid.flat().map((v, idx) => (
-          <div
-            key={idx}
-            className={`aspect-square rounded-xl border-2 border-ink flex items-center justify-center font-extrabold transition-colors ${tileCls(v)} ${tileFont(v)}`}
-          >
-            {v > 0 ? v : ''}
-          </div>
-        ))}
+        {/* Background static cells */}
+        <div className="grid grid-cols-4 gap-2 sm:gap-2.5 w-full h-full">
+          {Array.from({ length: SIZE * SIZE }).map((_, idx) => (
+            <div key={idx} className="rounded-xl bg-[#D9D4D0] border-2 border-ink" />
+          ))}
+        </div>
+
+        {/* Animated sliding cubes layer */}
+        <div className="absolute inset-2.5 sm:inset-3 pointer-events-none">
+          {tiles.map((tile) => (
+            <div
+              key={tile.id}
+              style={{
+                width: 'calc((100% - 3 * var(--g)) / 4)',
+                height: 'calc((100% - 3 * var(--g)) / 4)',
+                transform: `translate3d(calc(${tile.col} * (100% + var(--g))), calc(${tile.row} * (100% + var(--g))), 0)`,
+                transition: 'transform 130ms cubic-bezier(0.22, 1, 0.36, 1)',
+                zIndex: tile.dying ? 10 : tile.isMerged ? 30 : 20,
+              }}
+              className="absolute left-0 top-0"
+            >
+              <div
+                className={`w-full h-full rounded-xl border-2 border-ink flex items-center justify-center font-extrabold shadow-b2 ${tileCls(tile.value)} ${tileFont(tile.value)} ${tile.isNew ? 'tile-pop' : tile.isMerged ? 'tile-merge' : ''}`}
+              >
+                {tile.value}
+              </div>
+            </div>
+          ))}
+        </div>
 
         {(over || won) && (
-          <div className="absolute inset-0 bg-ink/80 rounded-xl flex items-center justify-center p-4">
+          <div className="absolute inset-0 z-40 bg-ink/80 rounded-xl flex items-center justify-center p-4">
             <div className="bg-white border-4 border-ink rounded-2xl shadow-b6 p-5 text-center max-w-xs w-full flex flex-col gap-3">
               <div className="text-3xl">{won ? '🏆' : '🐭'}</div>
               <h3 className="text-2xl font-extrabold uppercase">{won ? 'You reached 2048!' : 'Game over!'}</h3>
@@ -340,16 +483,7 @@ export default function Game2048({ signedIn, serverBest, onSignIn, onSaveScore }
         )}
       </div>
 
-      {/* Mobile D-pad + desktop hint */}
-      <div className="flex flex-col items-center gap-2 pt-1">
-        <button type="button" aria-label="Up" onClick={() => step('up')} className="btn bg-white w-14 h-11 text-lg p-0">▲</button>
-        <div className="flex gap-2">
-          <button type="button" aria-label="Left" onClick={() => step('left')} className="btn bg-white w-14 h-11 text-lg p-0">◀</button>
-          <button type="button" aria-label="Down" onClick={() => step('down')} className="btn bg-white w-14 h-11 text-lg p-0">▼</button>
-          <button type="button" aria-label="Right" onClick={() => step('right')} className="btn bg-white w-14 h-11 text-lg p-0">▶</button>
-        </div>
-        <p className="font-mono text-[11px] text-mute text-center">Swipe, use arrow keys / WASD, or tap the arrows</p>
-      </div>
+      <p className="font-mono text-[11px] text-mute text-center">Swipe on the board or use arrow keys / WASD</p>
     </div>
   );
 }

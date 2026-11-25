@@ -8,7 +8,7 @@ export default function LeaderboardPage() {
   const { isAdmin, users } = useApp();
   return (
     <>
-      <Marquee items={['LEADERBOARD PROTOCOL V2.4', 'LIVE SCORE AUDIT ACTIVE', `${users.length} PARTICIPANTS REGISTERED`]} />
+      <Marquee items={['LEADERBOARD', 'EARN POINTS IN MISSIONS & GAMES', `${users.length} PARTICIPANTS REGISTERED`]} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
         <Header back />
         <div className="box p-6 md:p-8 bg-[#f6f3f2]">

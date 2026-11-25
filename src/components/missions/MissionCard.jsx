@@ -4,7 +4,7 @@ import { deadlineText, isExpired } from '../../utils/mission.js';
 
 const STATUS = { pending: ['UNDER REVIEW', 'bg-sun'], approved: ['COMPLETED ✓', 'bg-neon'], rejected: ['REJECTED', 'bg-hot text-white'] };
 
-export default function MissionCard({ mission }) {
+export default function MissionCard({ mission, className = '' }) {
   const { openMission, isAdmin, openEditor, statusFor, profile, submissions, clearSubmissions } = useApp();
   const doneCount = isAdmin ? submissions.filter((s) => s.missionId === mission.id).length : 0;
   const clearDone = (e) => {
@@ -14,7 +14,7 @@ export default function MissionCard({ mission }) {
   const st = !isAdmin && profile ? STATUS[statusFor(mission)] : null;
   return (
     <div onClick={() => openMission(mission)}
-      className={`border-[3px] border-ink bg-white p-4 rounded-xl shadow-b4 hover:shadow-b6 transition-all flex flex-col justify-between cursor-pointer ${mission.active === false ? 'opacity-60' : ''}`}>
+      className={`border-[3px] border-ink bg-white p-4 rounded-xl shadow-b4 hover:shadow-b6 transition-all flex flex-col justify-between cursor-pointer ${mission.active === false ? 'opacity-60' : ''} ${className}`}>
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-1">
           <span className={`tag ${categoryColor(mission.category)}`}>{mission.category}</span>

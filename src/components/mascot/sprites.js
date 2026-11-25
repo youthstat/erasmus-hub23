@@ -38,6 +38,22 @@ import mafia1 from '../../assets/mouse/mafia1.png';
 import mafia2 from '../../assets/mouse/mafia2.png';
 import mafia3 from '../../assets/mouse/mafia3.png';
 import mafia4 from '../../assets/mouse/mafia4.png';
+import watch1 from '../../assets/mouse/watch1.png';
+import watch2 from '../../assets/mouse/watch2.png';
+import watch3 from '../../assets/mouse/watch3.png';
+import watch4 from '../../assets/mouse/watch4.png';
+import play2048_1 from '../../assets/mouse/play2048_1.png';
+import play2048_2 from '../../assets/mouse/play2048_2.png';
+import play2048_3 from '../../assets/mouse/play2048_3.png';
+import play2048_4 from '../../assets/mouse/play2048_4.png';
+import gossip1 from '../../assets/mouse/gossip1.png';
+import gossip2 from '../../assets/mouse/gossip2.png';
+import gossip3 from '../../assets/mouse/gossip3.png';
+import gossip4 from '../../assets/mouse/gossip4.png';
+import reflect1 from '../../assets/mouse/reflect1.png';
+import reflect2 from '../../assets/mouse/reflect2.png';
+import reflect3 from '../../assets/mouse/reflect3.png';
+import reflect4 from '../../assets/mouse/reflect4.png';
 
 export const SPRITES = {
   idle: { src: idle, w: 125, h: 141 },
@@ -57,24 +73,40 @@ export const SPRITES = {
   wait: { src: wait, w: 107, h: 113 },
   thanks: { src: thanks, w: 122, h: 117 },
   wave: { src: wave, w: 126, h: 108 },
-  thief1: { src: thief1, w: 108, h: 117 },
-  thief2: { src: thief2, w: 129, h: 118 },
-  thief3: { src: thief3, w: 128, h: 94 },
-  thief4: { src: thief4, w: 112, h: 121 },
-  guilty1: { src: guilty1, w: 110, h: 119 },
-  guilty2: { src: guilty2, w: 109, h: 120 },
-  guilty3: { src: guilty3, w: 112, h: 118 },
-  guilty4: { src: guilty4, w: 97, h: 115 },
-  gift1: { src: gift1, w: 105, h: 122 },
-  gift2: { src: gift2, w: 125, h: 119 },
-  gift3: { src: gift3, w: 126, h: 121 },
-  gift4: { src: gift4, w: 123, h: 119 },
-  oscar1: { src: oscar1, w: 109, h: 116 },
-  oscar2: { src: oscar2, w: 125, h: 128 },
-  oscar3: { src: oscar3, w: 132, h: 120 },
-  oscar4: { src: oscar4, w: 136, h: 131 },
-  mafia1: { src: mafia1, w: 128, h: 128 },
-  mafia2: { src: mafia2, w: 132, h: 120 },
-  mafia3: { src: mafia3, w: 120, h: 122 },
-  mafia4: { src: mafia4, w: 139, h: 123 },
+  thief1: { src: thief1, w: 130, h: 140 },
+  thief2: { src: thief2, w: 140, h: 128 },
+  thief3: { src: thief3, w: 140, h: 103 },
+  thief4: { src: thief4, w: 130, h: 140 },
+  guilty1: { src: guilty1, w: 130, h: 140 },
+  guilty2: { src: guilty2, w: 127, h: 140 },
+  guilty3: { src: guilty3, w: 133, h: 140 },
+  guilty4: { src: guilty4, w: 118, h: 140 },
+  gift1: { src: gift1, w: 121, h: 140 },
+  gift2: { src: gift2, w: 140, h: 134 },
+  gift3: { src: gift3, w: 140, h: 134 },
+  gift4: { src: gift4, w: 140, h: 136 },
+  oscar1: { src: oscar1, w: 132, h: 140 },
+  oscar2: { src: oscar2, w: 137, h: 140 },
+  oscar3: { src: oscar3, w: 140, h: 127 },
+  oscar4: { src: oscar4, w: 140, h: 135 },
+  mafia1: { src: mafia1, w: 140, h: 140 },
+  mafia2: { src: mafia2, w: 140, h: 127 },
+  mafia3: { src: mafia3, w: 139, h: 140 },
+  mafia4: { src: mafia4, w: 140, h: 130 },
+  watch1: { src: watch1, w: 140, h: 138 },
+  watch2: { src: watch2, w: 140, h: 130 },
+  watch3: { src: watch3, w: 140, h: 112 },
+  watch4: { src: watch4, w: 140, h: 131 },
+  play2048_1: { src: play2048_1, w: 140, h: 116 },
+  play2048_2: { src: play2048_2, w: 140, h: 117 },
+  play2048_3: { src: play2048_3, w: 140, h: 107 },
+  play2048_4: { src: play2048_4, w: 140, h: 105 },
+  gossip1: { src: gossip1, w: 140, h: 111 },
+  gossip2: { src: gossip2, w: 140, h: 127 },
+  gossip3: { src: gossip3, w: 140, h: 126 },
+  gossip4: { src: gossip4, w: 140, h: 134 },
+  reflect1: { src: reflect1, w: 140, h: 133 },
+  reflect2: { src: reflect2, w: 140, h: 104 },
+  reflect3: { src: reflect3, w: 140, h: 133 },
+  reflect4: { src: reflect4, w: 140, h: 124 },
 };

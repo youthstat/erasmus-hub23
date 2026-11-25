@@ -20,7 +20,7 @@ const KEY = 'adminHidden';
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
 
 export default function AdminPage() {
-  const { isAdmin, allMissions, seedMissions, users, stealRequests } = useApp();
+  const { isAdmin, logoutAdmin, allMissions, seedMissions, users, stealRequests } = useApp();
   const [hidden, setHidden] = useState(load);       // { blockId: true }  remembered in this browser
   const [full, setFull] = useState(null);           // id of the block shown in the full window
   const pendingSteals = stealRequests.filter((r) => r.status === 'pending');
@@ -66,6 +66,7 @@ export default function AdminPage() {
           <span className="tag bg-neon">{allMissions.length} missions</span>
           {pendingSteals.length > 0 && <span className="tag bg-hot text-white">🕵️ {pendingSteals.length} steal requests</span>}
           <button className="tag bg-white" onClick={() => setAll(!allHidden)}>{allHidden ? 'SHOW ALL' : 'HIDE ALL'}</button>
+          <button className="tag bg-hot text-white" onClick={logoutAdmin}>Exit admin</button>
         </div>
       </div>
 
