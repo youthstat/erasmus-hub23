@@ -20,5 +20,10 @@ const fileProtocolFriendly = () => ({
 export default defineConfig({
   base: './',
   plugins: [react(), fileProtocolFriendly()],
+  server: {
+    host: '0.0.0.0',
+    port: 3000,
+    allowedHosts: true,
+  },
   build: { rollupOptions: { output: { format: 'iife', inlineDynamicImports: true, banner: '/*! Copyright © 2026 Diana Demianets. All rights reserved. Copying or reuse without written permission is prohibited. Contact: demianets20@gmail.com */' } } },
 });

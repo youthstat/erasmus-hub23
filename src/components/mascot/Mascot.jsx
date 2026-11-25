@@ -4,30 +4,71 @@ import { useApp } from '../../context/AppContext.jsx';
 import { SPRITES } from './sprites.js';
 import { countWords, pts } from '../../firebase/services.js';
 import { GOSSIP_POINTS, GOSSIP_MIN_WORDS, MAX_GOSSIP_LENGTH } from '../../config/settings.js';
+import { fileToCover } from '../../utils/image.js';
+import { countryOf } from '../../hooks/useGame.js';
 
 /*
   Rattie Patty lives ON the page. She climbs onto the blocks (boxes, cards), sits and sleeps on them,
   nibbles a corner, hides behind a block (only her head sticks out above its edge) and peeks in from the
   screen edge. From time to time she says "Don't click me!" (of course, everybody clicks).
 
-  A click opens her talk panel (a white window): not signed in -> she asks to register; signed in -> she greets by name
-  and proposes "a gossip for 1 point - deal?"  ->  Deal  ->  she waits for a gossip, the sender picks anonymous / with name. Send = +1 point at once (only if the gossip is longer than three words); a participant may
-  send as many gossips as they like, every one must be new. Other participants never see them, only the admin
-  page does (with the author's name only if the sender chose to show it).
-
-  "Hiding" is done with a clip box whose bottom edge is the top edge of the block: the sprite is pushed
-  down inside it (dive 0 = standing, 0.45 = peeking, 1 = hidden).
+  Depending on the page she wears a matching outfit/props:
+  - /punishment      -> guilty sign
+  - /secret-friend*  -> gift box
+  - /killer-game     -> mafia suit & fedora
+  - /oscar*          -> golden Oscar statuette
+  And inside her talk panel she offers 3 deals: Gossip (+1 pt), Gift points (to someone from your own stash),
+  or Steal points (complete an admin heist task + attach photo proof -> sent for admin approval).
 */
 const S = 0.38;                                  // sprite scale (small mouse)
 const BOX_W = 54, BOX_H = 50, EDGE_W = 30;       // fixed box she lives in, so the position does not jump between poses
-const SIT = ['idle', 'side', 'sit2', 'sit3', 'think'];
 const RUN = ['run1', 'jump', 'run2', 'jump'];
 const WARNING = "Don't click me! 🙈";
-const THANKS = [
-  'Mmm, delicious! 😻 Got more? Tell me something new, I love this!',
-  'Ooh, juicy! 🤭 I’ll keep it safe. Another one? Something new!',
-  'Wow, I did not know that! 👀 Come on, one more — something new!',
+
+const JOKES_GENERAL = [
+  'Why did the mouse bring a ladder to the snack table? Because the cheese was on a higher tier! 🧀',
+  'I never snitch… unless someone pays me in cheddar. Just kidding, I work for gossip and drama! 🐭',
+  'Careful — I have tiny paws, big ears, and zero impulse control. 👂✨',
+  'They told me to act normal at Erasmus+. I immediately started climbing the UI cards. 😎',
 ];
+
+const JOKES_PAGE = {
+  punishment: [
+    'Who, me? Guilty of eating all the festival cookies? Never! 🍪👀',
+    'Look at this sign… I promise I was framed by a very suspicious pigeon! 🪧🐭',
+  ],
+  gift: [
+    'Secret Friend mode activated! My wrapping skills are 90% tape and 10% luck. 🎁',
+    'I hid a gift so well once even I forgot where it was. Happy hunting! 🎀',
+  ],
+  mafia: [
+    'Keep your friends close, and your Secret Weapon closer… capiche? 🕶️🎩',
+    'Don’t worry, I’m a certified mouse-fioso. Zero violence, 100% drama! 🕵️',
+  ],
+  oscar: [
+    'And the Oscar for Best Dramatic Cheese-Eating goes to… ME! 🏆✨',
+    'I’m ready for my close-up! Just don’t film my tail, it gets stage fright. 🎬',
+  ],
+};
+
+const JOKES_THANKS_GOSSIP = [
+  'Mmm, delicious! 😻 My ears just grew 2 cm. Got another one?',
+  'Ooh, juicy! 🤭 If gossip were cheese, I’d be a billionaire mouse!',
+  'Wow, plot twist! 👀 Keep ’em coming — something fresh!',
+];
+
+const JOKES_DEAL_GIFT = [
+  'My lips are sealed tighter than a cheese vault! 🧀🔒',
+  'Delivered like a stealth ninja in tiny slippers! 🎁💨',
+  'So generous! Don’t worry, I erased my footprints from the leaderboard. 🐾',
+];
+
+const JOKES_DEAL_STEAL = [
+  'Heist logged! Remember: if anyone asks, you were just admiring the wallpaper. 🕶️',
+  'Smooth operation, partner! Now act natural and eat a snack. 🍿🕵️',
+  'Mission proof sent to the bosses! Even Sherlock Holmes wouldn’t suspect a mouse. 🐭💼',
+];
+
 const SEL = '.box, [class*="border-[3px]"][class*="rounded-xl"]';
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -35,6 +76,52 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const vwidth = () => document.documentElement.clientWidth;
+
+function themeForPath(pathname) {
+  if (pathname.startsWith('/punishment')) {
+    return {
+      key: 'punishment',
+      sit: ['guilty1', 'guilty2', 'guilty3', 'guilty4'],
+      peek: ['guilty1', 'guilty3'],
+      edge: 'guilty2',
+      hello: 'guilty1',
+    };
+  }
+  if (pathname.startsWith('/secret-friend')) {
+    return {
+      key: 'gift',
+      sit: ['gift1', 'gift2', 'gift3', 'gift4'],
+      peek: ['gift2', 'gift4'],
+      edge: 'gift2',
+      hello: 'gift3',
+    };
+  }
+  if (pathname.startsWith('/killer-game')) {
+    return {
+      key: 'mafia',
+      sit: ['mafia1', 'mafia2', 'mafia3', 'mafia4'],
+      peek: ['mafia2', 'mafia3'],
+      edge: 'mafia3',
+      hello: 'mafia2',
+    };
+  }
+  if (pathname.startsWith('/oscar')) {
+    return {
+      key: 'oscar',
+      sit: ['oscar1', 'oscar2', 'oscar3', 'oscar4'],
+      peek: ['oscar1', 'oscar2'],
+      edge: 'oscar2',
+      hello: 'oscar3',
+    };
+  }
+  return {
+    key: 'default',
+    sit: ['idle', 'side', 'sit2', 'sit3', 'think'],
+    peek: ['alert', 'idle'],
+    edge: 'alert',
+    hello: 'hello',
+  };
+}
 
 // blocks whose top edge is currently on screen
 const visibleBlocks = () => [...document.querySelectorAll(SEL)].filter((el) => {
@@ -53,38 +140,79 @@ function place(sc) {
   return { left: r.left + sx + sc.dx, top: r.top + sy + 3 - BOX_H, cw: BOX_W };
 }
 
-function build(act, el) {
+function build(act, el, theme) {
   const r = el.getBoundingClientRect();
   const minDx = Math.max(4, 4 - r.left);
   const maxDx = Math.max(minDx, Math.min(r.width - BOX_W - 4, vwidth() - r.left - BOX_W - 4));
   const dx = rand(minDx, maxDx);
   const base = { kind: 'stand', act, el, dx, dive: 0, flip: pick([1, -1]) };
   switch (act) {
-    case 'sleep': return { ...base, pose: 'sleep', extra: 'zzz' };
-    case 'gnaw': return { ...base, pose: 'idle', extra: 'gnaw', flip: 1,    // nibbles the top-right corner of the block
-      dx: clamp(r.width - BOX_W + 2, minDx, vwidth() - r.left - BOX_W - 2) };
-    case 'peek': return { ...base, pose: pick(['alert', 'idle']), dive: 0.45 };
+    case 'sleep':
+      return theme.key === 'default'
+        ? { ...base, pose: 'sleep', extra: 'zzz' }
+        : { ...base, pose: pick(theme.sit), extra: 'zzz' };
+    case 'gnaw':
+      return {
+        ...base,
+        pose: theme.key === 'default' ? 'idle' : theme.sit[0],
+        extra: 'gnaw',
+        flip: 1,
+        dx: clamp(r.width - BOX_W + 2, minDx, vwidth() - r.left - BOX_W - 2),
+      };
+    case 'peek':
+      return { ...base, pose: pick(theme.peek), dive: 0.45 };
     case 'edge': {
       const side = pick(['l', 'r']);
-      return { kind: 'edge', act, side, y: window.scrollY + rand(110, Math.max(130, innerHeight - 150)), pose: 'alert', dive: 0, flip: side === 'l' ? 1 : -1 };
+      return { kind: 'edge', act, side, y: window.scrollY + rand(110, Math.max(130, innerHeight - 150)), pose: theme.edge, dive: 0, flip: side === 'l' ? 1 : -1 };
     }
-    default: return { ...base, pose: pick(SIT) };
+    default:
+      return { ...base, pose: pick(theme.sit) };
   }
 }
 
 export default function Mascot() {
-  const { profile, sendGossip, openAccount } = useApp();
+  const {
+    users,
+    profile,
+    heistTasks,
+    sendGossip,
+    giftPoints,
+    submitStealRequest,
+    openAccount,
+  } = useApp();
   const { pathname } = useLocation();
+  const theme = themeForPath(pathname);
+
   const [scene, setScene] = useState(null);
   const [frame, setFrame] = useState(0);
   const [open, setOpen] = useState(false);
-  const [phase, setPhase] = useState('hello');          // login | hello | write
+  // login | hello | write | gift | steal-task | steal-form | deal-done
+  const [phase, setPhase] = useState('hello');
+  const [joke, setJoke] = useState('');
+
+  // Gossip state
   const [text, setText] = useState('');
-  const [note, setNote] = useState(null);               // { kind: 'ok' | 'warn' | 'err', text }
+  const [note, setNote] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [showName, setShowName] = useState(false);     // false = anonymous
-  const [sent, setSent] = useState(0);                  // gossips sent in this panel (restarts the +5 animation)
+  const [showName, setShowName] = useState(false);
+  const [sent, setSent] = useState(0);
   const [happy, setHappy] = useState(false);
+
+  // Gift state
+  const [targetFilter, setTargetFilter] = useState('');
+  const [giftTargetId, setGiftTargetId] = useState('');
+  const [giftAmount, setGiftAmount] = useState('10');
+
+  // Steal state
+  const [selectedTaskId, setSelectedTaskId] = useState('');
+  const [stealPhoto, setStealPhoto] = useState('');
+  const [stealDesc, setStealDesc] = useState('');
+  const [stealVictimId, setStealVictimId] = useState('');
+  const [stealAmount, setStealAmount] = useState('10');
+
+  // Deal completion state
+  const [dealDoneInfo, setDealDoneInfo] = useState(null); // { kind: 'gift' | 'steal', amount, joke }
+
   const [, relayout] = useReducer((n) => n + 1, 0);
   const ref = useRef(null);
   const show = (sc) => { ref.current = sc; setScene(sc); };
@@ -111,6 +239,7 @@ export default function Mascot() {
     show(null);
     const wait = (ms) => new Promise((res) => setTimeout(() => res(!dead), ms));
     const patch = (o) => { if (ref.current) show({ ...ref.current, ...o }); };
+    const pageTheme = themeForPath(pathname);
 
     // hide behind the current block, reappear (rise) at the next place
     const reveal = async (next) => {
@@ -140,13 +269,13 @@ export default function Mascot() {
 
     (async () => {
       if (!(await wait(1500))) return;
-      if (reduced()) { const l = visibleBlocks(); if (l[0]) show(build('sit', l[0])); return; }
+      if (reduced()) { const l = visibleBlocks(); if (l[0]) show(build('sit', l[0], pageTheme)); return; }
       while (!dead) {
         const list = visibleBlocks();
         if (!list.length) { if (!(await wait(2500))) return; continue; }
         const others = list.filter((b) => b !== ref.current?.el);
         const act = pick(['sit', 'sit', 'sleep', 'gnaw', 'peek', 'peek', 'edge']);
-        const next = build(act, pick(others.length ? others : list));
+        const next = build(act, pick(others.length ? others : list), pageTheme);
         const cur = ref.current;
         const smooth = cur && place(cur) && cur.kind === 'stand' && cur.dive === 0 && next.kind === 'stand' && next.dive === 0;
         if (!(await (smooth ? walk(next) : reveal(next)))) return;
@@ -162,22 +291,52 @@ export default function Mascot() {
     return () => { dead = true; };
   }, [open, pathname]);
 
+  const resetForms = () => {
+    setText('');
+    setNote(null);
+    setHappy(false);
+    setSent(0);
+    setShowName(false);
+    setTargetFilter('');
+    setGiftTargetId('');
+    setGiftAmount('10');
+    setSelectedTaskId(heistTasks[0]?.id || '');
+    setStealPhoto('');
+    setStealDesc('');
+    setStealVictimId('');
+    setStealAmount('10');
+    setDealDoneInfo(null);
+  };
+
   const onClick = () => {
-    setText(''); setNote(null); setHappy(false); setSent(0); setShowName(false);
+    resetForms();
+    const pool = JOKES_PAGE[theme.key] ? [...JOKES_PAGE[theme.key], ...JOKES_GENERAL] : JOKES_GENERAL;
+    setJoke(pick(pool));
     setPhase(profile ? 'hello' : 'login');
     setOpen(true);
   };
-  const close = () => { setOpen(false); setPhase('hello'); setText(''); setNote(null); setHappy(false); };
 
-  const submit = async () => {
+  const close = () => {
+    setOpen(false);
+    setPhase('hello');
+    resetForms();
+  };
+
+  const others = users
+    .filter((u) => u.id !== profile?.id)
+    .filter((u) => !targetFilter.trim() || u.name.toLowerCase().includes(targetFilter.trim().toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const submitGossip = async () => {
     if (busy) return;
-    if (countWords(text) < GOSSIP_MIN_WORDS)
+    if (countWords(text) < GOSSIP_MIN_WORDS) {
       return setNote({ kind: 'warn', text: `Hmm, that’s too short! Tell me more than ${GOSSIP_MIN_WORDS - 1} words and I’ll pay you ${pts(GOSSIP_POINTS)}.` });
+    }
     setBusy(true);
     try {
       await sendGossip(text, showName);
       setText(''); setSent((n) => n + 1); setHappy(true);
-      setNote({ kind: 'ok', text: THANKS[sent % THANKS.length] });
+      setNote({ kind: 'ok', text: JOKES_THANKS_GOSSIP[sent % JOKES_THANKS_GOSSIP.length] });
       setTimeout(() => setHappy(false), 2600);
     } catch (e) {
       if (e.code === 'duplicate') setNote({ kind: 'warn', text: 'I already know this one! 😼 Tell me something new.' });
@@ -186,45 +345,150 @@ export default function Mascot() {
     } finally { setBusy(false); }
   };
 
+  const submitGift = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    setNote(null);
+    const amt = Math.floor(Number(giftAmount));
+    const myScore = Number(profile?.score) || 0;
+    if (!giftTargetId) return setNote({ kind: 'warn', text: 'Pick someone to gift points to first!' });
+    if (!Number.isFinite(amt) || amt <= 0) return setNote({ kind: 'warn', text: 'Enter at least 1 point to gift.' });
+    if (amt > myScore) return setNote({ kind: 'warn', text: `You only have ${myScore} PTS! Can’t gift more than you’ve got.` });
+
+    setBusy(true);
+    try {
+      const sentAmt = await giftPoints(giftTargetId, amt);
+      setDealDoneInfo({ kind: 'gift', amount: sentAmt, joke: pick(JOKES_DEAL_GIFT) });
+      setPhase('deal-done');
+    } catch (err) {
+      setNote({ kind: 'err', text: err.message || 'Could not send gift.' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setNote(null);
+    try {
+      const dataUrl = await fileToCover(file, 640);
+      setStealPhoto(dataUrl);
+    } catch (err) {
+      setNote({ kind: 'err', text: err.message });
+    }
+  };
+
+  const submitSteal = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    setNote(null);
+    const task = heistTasks.find((t) => t.id === selectedTaskId) || heistTasks[0];
+    const victim = users.find((u) => u.id === stealVictimId);
+    const amt = Math.floor(Number(stealAmount));
+    if (!task) return setNote({ kind: 'warn', text: 'No active heist task selected.' });
+    if (!stealPhoto) return setNote({ kind: 'warn', text: 'Attach a photo showing you completed the task!' });
+    if (stealDesc.trim().length < 5) return setNote({ kind: 'warn', text: 'Write a short description of what you did (at least 5 characters).' });
+    if (!victim) return setNote({ kind: 'warn', text: 'Choose who you want to steal points from!' });
+    const victimScore = Number(victim.score) || 0;
+    if (victimScore <= 0) return setNote({ kind: 'warn', text: `${victim.name} has 0 PTS — nothing to steal!` });
+    if (!Number.isFinite(amt) || amt <= 0 || amt > victimScore) {
+      return setNote({ kind: 'warn', text: `Choose between 1 and ${victimScore} PTS.` });
+    }
+
+    setBusy(true);
+    try {
+      await submitStealRequest({
+        victimId: victim.id,
+        victimName: victim.name,
+        amount: amt,
+        taskId: task.id,
+        taskTitle: task.title,
+        description: stealDesc,
+        photo: stealPhoto,
+      });
+      setDealDoneInfo({ kind: 'steal', amount: amt, joke: pick(JOKES_DEAL_STEAL) });
+      setPhase('deal-done');
+    } catch (err) {
+      setNote({ kind: 'err', text: err.message || 'Could not submit heist.' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   /* ---------- talk panel (after a click) ---------- */
   if (open) {
-    const writing = phase === 'write';
-    const pose = writing ? (happy ? 'thanks' : text.trim() ? 'secret' : 'wait') : phase === 'login' ? 'love' : 'hello';
-    const s = SPRITES[pose];
-    const k = writing ? 0.6 : 0.7;
+    const wide = phase === 'write' || phase === 'gift' || phase === 'steal-task' || phase === 'steal-form' || phase === 'deal-done';
+    let pose = theme.hello;
+    if (phase === 'login') pose = theme.key === 'default' ? 'love' : theme.hello;
+    else if (phase === 'write') pose = happy ? 'thanks' : text.trim() ? 'secret' : 'wait';
+    else if (phase === 'gift') pose = giftTargetId ? 'gift2' : 'gift1';
+    else if (phase === 'steal-task') pose = 'thief3';
+    else if (phase === 'steal-form') pose = stealPhoto ? 'thief1' : 'thief4';
+    else if (phase === 'deal-done') pose = dealDoneInfo?.kind === 'gift' ? 'gift3' : 'thief2';
+
+    const s = SPRITES[pose] || SPRITES.hello;
+    const k = wide ? 0.6 : 0.7;
     const words = countWords(text);
+    const myScore = Number(profile?.score) || 0;
+    const selectedTask = heistTasks.find((t) => t.id === selectedTaskId) || heistTasks[0] || null;
+    const stealVictim = users.find((u) => u.id === stealVictimId) || null;
+    const stealVictimScore = Number(stealVictim?.score) || 0;
+    const giftTarget = users.find((u) => u.id === giftTargetId) || null;
+
+    const panelBadge = (() => {
+      if (phase === 'write') return showName ? `👤 ${profile?.name || 'You'}` : '🔒 Anonymous';
+      if (phase === 'gift') return `🎁 Gift · You: ${myScore} PTS`;
+      if (phase === 'steal-task' || phase === 'steal-form') return '🕵️ Top Secret Heist';
+      if (phase === 'deal-done') return '🤝 Deal Closed';
+      return null;
+    })();
+
     return (
       <div className="fixed z-[60] right-2 bottom-2 sm:right-6 sm:bottom-4 flex items-end gap-1 sm:gap-2 max-w-[calc(100vw-1rem)]">
-        <div className={`mascot-pop mascot-panel relative min-w-0 mb-6 border-[3px] border-ink rounded-xl shadow-b6 ${writing ? 'w-[250px] sm:w-[330px]' : 'w-[210px] sm:w-[270px]'}`}>
-          <div className="flex items-center justify-between gap-2 px-1 pt-1 border-b-[3px] border-ink bg-paper rounded-t-lg">
-            {writing
-              ? <span className="border-2 border-b-0 border-ink bg-sun rounded-t px-2 py-0.5 font-mono text-[11px] font-bold uppercase max-w-[75%] truncate">{showName ? `👤 ${profile?.name || 'You'}` : '🔒 Anonymous'}</span>
-              : <span />}
+        <div className={`mascot-pop mascot-panel relative min-w-0 mb-6 border-[3px] border-ink rounded-xl shadow-b6 flex flex-col max-h-[82vh] ${wide ? 'w-[280px] sm:w-[370px]' : 'w-[235px] sm:w-[295px]'}`}>
+          <div className="flex items-center justify-between gap-2 px-1.5 pt-1 border-b-[3px] border-ink bg-paper rounded-t-lg shrink-0">
+            {panelBadge
+              ? <span className="border-2 border-b-0 border-ink bg-sun rounded-t px-2 py-0.5 font-mono text-[11px] font-bold uppercase max-w-[80%] truncate">{panelBadge}</span>
+              : <span className="font-mono text-[11px] font-bold uppercase px-1.5 text-mute">🐭 Rattie Patty</span>}
             <button onClick={close} aria-label="Close" className="w-6 h-6 mb-1 border-2 border-ink bg-white font-bold leading-none">✕</button>
           </div>
-          <div className="relative z-10 p-3 sm:p-4 flex flex-col gap-2 text-sm sm:text-base font-bold">
+
+          <div className="relative z-10 p-3 sm:p-4 flex flex-col gap-2.5 text-sm font-bold overflow-y-auto">
             {phase === 'login' && (<>
               <p>Hi, I’m Rattie Patty! <span className="text-hot">❤</span></p>
-              <p className="font-medium">I don’t see who you are yet 🧐 Please register (or sign in) — then I’ll know your name and can pay you points!</p>
+              <p className="font-medium text-xs text-[#4b4731] italic">{joke}</p>
+              <p className="font-medium">I don’t see who you are yet 🧐 Sign in or register — then we can gossip, gift points, or pull off a cheeky heist!</p>
               <button className="btn bg-neon text-xs" onClick={() => { close(); openAccount(null); }}>Register / Sign in</button>
             </>)}
 
             {phase === 'hello' && (<>
               <p>Hi, I’m Rattie Patty! <span className="text-hot">❤</span></p>
-              <p className="font-medium">Nice to meet you, <b className="break-words">{profile?.name}</b>! 🧀</p>
-              <p className="font-medium">I can give you <span className="text-xl text-[#c4263f]">{GOSSIP_POINTS}</span> {GOSSIP_POINTS === 1 ? 'point' : 'points'} if you give me a <b>gossip</b>. Deal?</p>
-              <div className="flex gap-2 pt-1">
-                <button className="btn bg-neon text-xs flex-1" onClick={() => setPhase('write')}>Deal!</button>
-                <button className="btn bg-white text-xs flex-1" onClick={close}>No way</button>
+              <p className="font-medium">Nice to see you, <b className="break-words">{profile?.name}</b>! You have <span className="tag bg-sun">{myScore} PTS</span></p>
+              <p className="font-medium text-xs bg-paper border-2 border-ink/20 rounded-lg px-2.5 py-2 italic">“{joke}”</p>
+              <p className="font-medium">I’ve got <b>three deals</b> on the table today. Pick your move:</p>
+              <div className="flex flex-col gap-2 pt-0.5">
+                <button className="btn bg-neon text-xs justify-between" onClick={() => { setNote(null); setPhase('write'); }}>
+                  <span>🤫 Tell a gossip</span><span className="tag bg-white">+{GOSSIP_POINTS} PT</span>
+                </button>
+                <button className="btn bg-sun text-xs justify-between" onClick={() => { setNote(null); setTargetFilter(''); setPhase('gift'); }}>
+                  <span>🎁 Gift points</span><span className="tag bg-white">SECRET</span>
+                </button>
+                <button className="btn bg-hot text-white text-xs justify-between" onClick={() => { setNote(null); setSelectedTaskId(heistTasks[0]?.id || ''); setPhase('steal-task'); }}>
+                  <span>🕵️ Steal points</span><span className="tag bg-ink text-white">HEIST</span>
+                </button>
               </div>
             </>)}
 
-            {writing && (<>
+            {phase === 'write' && (<>
+              <div className="flex items-center justify-between gap-2">
+                <button type="button" onClick={() => { setNote(null); setPhase('hello'); }} className="font-mono text-xs underline text-mute">← Back to deals</button>
+              </div>
               <p className="font-medium">{note ? <span className={note.kind === 'ok' ? 'text-[#007a33] font-bold' : note.kind === 'err' ? 'text-hot font-mono text-xs' : 'text-[#c4263f] font-bold'}>{note.text}</span>
-                : <>I’m all ears… tell me a juicy gossip! 👂</>}</p>
+                : <>I’m all ears… tell me a juicy gossip for <span className="text-[#c4263f]">{pts(GOSSIP_POINTS)}</span>! 👂</>}</p>
               <textarea autoFocus rows={4} maxLength={MAX_GOSSIP_LENGTH} value={text} disabled={busy}
                 onChange={(e) => { setText(e.target.value); if (note?.kind !== 'ok') setNote(null); }}
-                onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === 'Enter' && submit()}
+                onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === 'Enter' && submitGossip()}
                 placeholder="Write your gossip here…"
                 className="w-full resize-none border-[3px] border-ink rounded-xl px-3 py-2 font-sans text-sm font-medium bg-white focus:outline-none focus:bg-sun/20" />
               <div className="flex border-[3px] border-ink rounded-xl overflow-hidden font-mono text-[11px] font-bold uppercase" role="radiogroup" aria-label="Who is the gossip from">
@@ -233,7 +497,7 @@ export default function Mascot() {
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className={`font-mono text-[11px] font-normal ${words >= GOSSIP_MIN_WORDS ? 'text-[#007a33]' : 'text-mute'}`}>{words} {words === 1 ? 'word' : 'words'} · {GOSSIP_MIN_WORDS}+ = {GOSSIP_POINTS} pt</span>
-                <button className="btn bg-neon text-xs py-1.5" disabled={busy} onClick={submit}>{busy ? '…' : 'Send'}</button>
+                <button className="btn bg-neon text-xs py-1.5" disabled={busy} onClick={submitGossip}>{busy ? '…' : 'Send'}</button>
               </div>
               <p className="font-mono text-[11px] font-normal text-mute leading-snug">
                 🤫 <b className="font-bold text-ink">I know how to keep secrets!</b>{' '}
@@ -242,11 +506,155 @@ export default function Mascot() {
                   : 'Your gossip is anonymous: other participants never see it, and nobody will know it was you.'}
               </p>
             </>)}
+
+            {phase === 'gift' && (
+              <form onSubmit={submitGift} className="flex flex-col gap-2.5">
+                <button type="button" onClick={() => { setNote(null); setPhase('hello'); }} className="self-start font-mono text-xs underline text-mute">← Back to deals</button>
+                <div className="bg-sun/30 border-2 border-ink rounded-xl p-2.5 text-xs font-medium leading-snug">
+                  🎁 <b>How gifting works:</b> Pick a participant you want to reward. The points are taken directly from <b>your own account</b> ({myScore} PTS) and given to them — no task needed, and they will never know it was from you!
+                </div>
+                <label className="flex flex-col gap-1 font-mono text-[11px] uppercase">
+                  <span>1 · Choose recipient</span>
+                  <input type="text" value={targetFilter} onChange={(e) => setTargetFilter(e.target.value)}
+                    placeholder="Filter by name…"
+                    className="border-2 border-ink rounded-lg px-2.5 py-1.5 font-sans text-xs font-medium bg-white" />
+                  <select className="border-[3px] border-ink rounded-xl px-2.5 py-2 font-mono text-xs bg-white"
+                    value={giftTargetId} onChange={(e) => { setGiftTargetId(e.target.value); setNote(null); }}>
+                    <option value="">Select a participant…</option>
+                    {others.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}{countryOf(u) ? ` (${countryOf(u)})` : ''}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 font-mono text-[11px] uppercase">
+                  <span>2 · Points to gift (you have {myScore} PTS)</span>
+                  <input type="number" min="1" max={Math.max(1, myScore)} value={giftAmount}
+                    onChange={(e) => { setGiftAmount(e.target.value); setNote(null); }}
+                    className="border-[3px] border-ink rounded-xl px-3 py-1.5 font-mono text-sm bg-white" />
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[5, 10, 25, 50].filter((n) => n <= myScore).map((n) => (
+                    <button type="button" key={n} onClick={() => setGiftAmount(String(n))} className="tag bg-paper hover:bg-sun">+{n}</button>
+                  ))}
+                </div>
+                {giftTarget && Number(giftAmount) > 0 && Number(giftAmount) <= myScore && (
+                  <div className="font-mono text-[11px] text-[#007a33]">
+                    Your balance: {myScore} → {myScore - Math.floor(Number(giftAmount))} PTS · {giftTarget.name} gets +{Math.floor(Number(giftAmount))} PTS
+                  </div>
+                )}
+                {note && <p className="font-mono text-xs text-hot">{note.text}</p>}
+                <button type="submit" disabled={busy || myScore <= 0} className="btn bg-neon text-xs disabled:opacity-50">
+                  {busy ? 'Sending…' : myScore <= 0 ? 'You have 0 PTS' : '🎁 Gift points now'}
+                </button>
+              </form>
+            )}
+
+            {phase === 'steal-task' && (<>
+              <button type="button" onClick={() => { setNote(null); setPhase('hello'); }} className="self-start font-mono text-xs underline text-mute">← Back to deals</button>
+              <p className="font-medium text-xs bg-paper border-2 border-ink/20 rounded-lg px-2.5 py-2 italic">
+                “Psst… want to pull off a heist? First, prove you’ve got what it takes by finishing one of the organizers’ secret tasks!”
+              </p>
+              {heistTasks.length === 0 ? (
+                <div className="border-2 border-ink rounded-xl bg-sun/30 p-3 text-xs font-medium">
+                  No heist tasks are posted yet! Ask an organizer to add tasks in <b>Admin panel → Rattie Patty: heists</b>.
+                </div>
+              ) : (
+                <>
+                  <div className="font-mono text-[11px] uppercase text-mute">Choose a heist task to complete:</div>
+                  <div className="flex flex-col gap-2">
+                    {heistTasks.map((t) => {
+                      const active = (selectedTask?.id === t.id);
+                      return (
+                        <button type="button" key={t.id} onClick={() => setSelectedTaskId(t.id)}
+                          className={`text-left border-[3px] border-ink rounded-xl p-2.5 transition ${active ? 'bg-sun shadow-b2' : 'bg-white'}`}>
+                          <div className="font-extrabold uppercase text-xs">{active ? '✓ ' : ''}{t.title}</div>
+                          {t.details && <div className="text-xs font-medium mt-0.5 text-[#3b3728]">{t.details}</div>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button type="button" className="btn bg-hot text-white text-xs mt-1" onClick={() => { setNote(null); setPhase('steal-form'); }}>
+                    I’ve done this — attach proof →
+                  </button>
+                </>
+              )}
+            </>)}
+
+            {phase === 'steal-form' && (
+              <form onSubmit={submitSteal} className="flex flex-col gap-2.5">
+                <button type="button" onClick={() => { setNote(null); setPhase('steal-task'); }} className="self-start font-mono text-xs underline text-mute">← Change task</button>
+                <div className="border-2 border-ink rounded-lg bg-sun/30 px-2.5 py-1.5 text-xs">
+                  <b>Task:</b> {selectedTask?.title}
+                </div>
+                <label className="flex flex-col gap-1 font-mono text-[11px] uppercase">
+                  <span>1 · Photo proof *</span>
+                  <input type="file" accept="image/*" onChange={handlePhoto}
+                    className="text-xs font-sans file:mr-2 file:border-2 file:border-ink file:rounded-lg file:bg-sun file:px-2 file:py-1 file:font-mono file:text-[11px] file:font-bold" />
+                </label>
+                {stealPhoto && (
+                  <img src={stealPhoto} alt="Task proof preview" className="w-full h-28 object-cover border-[3px] border-ink rounded-xl" />
+                )}
+                <label className="flex flex-col gap-1 font-mono text-[11px] uppercase">
+                  <span>2 · What did you do? *</span>
+                  <textarea rows={2} maxLength={500} value={stealDesc}
+                    onChange={(e) => { setStealDesc(e.target.value); setNote(null); }}
+                    placeholder="Describe how you completed the task…"
+                    className="w-full resize-none border-[3px] border-ink rounded-xl px-2.5 py-1.5 font-sans text-xs font-medium bg-white" />
+                </label>
+                <label className="flex flex-col gap-1 font-mono text-[11px] uppercase">
+                  <span>3 · Who do you want to rob? *</span>
+                  <input type="text" value={targetFilter} onChange={(e) => setTargetFilter(e.target.value)}
+                    placeholder="Filter by name…"
+                    className="border-2 border-ink rounded-lg px-2.5 py-1 font-sans text-xs font-medium bg-white" />
+                  <select className="border-[3px] border-ink rounded-xl px-2.5 py-1.5 font-mono text-xs bg-white"
+                    value={stealVictimId} onChange={(e) => { setStealVictimId(e.target.value); setNote(null); }}>
+                    <option value="">Choose target…</option>
+                    {others.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name} — {u.score ?? 0} PTS</option>
+                    ))}
+                  </select>
+                </label>
+                {stealVictim && (
+                  <div className="bg-paper border-2 border-ink rounded-lg px-2.5 py-1.5 font-mono text-xs flex justify-between">
+                    <span>{stealVictim.name} has:</span>
+                    <b>{stealVictimScore} PTS</b>
+                  </div>
+                )}
+                <label className="flex flex-col gap-1 font-mono text-[11px] uppercase">
+                  <span>4 · Points to steal *</span>
+                  <input type="number" min="1" max={Math.max(1, stealVictimScore)} value={stealAmount}
+                    onChange={(e) => { setStealAmount(e.target.value); setNote(null); }}
+                    className="border-[3px] border-ink rounded-xl px-3 py-1.5 font-mono text-sm bg-white" />
+                </label>
+                {note && <p className="font-mono text-xs text-hot">{note.text}</p>}
+                <button type="submit" disabled={busy || (!!stealVictim && stealVictimScore <= 0)} className="btn bg-hot text-white text-xs disabled:opacity-50">
+                  {busy ? 'Sending…' : '🕵️ Submit for approval'}
+                </button>
+              </form>
+            )}
+
+            {phase === 'deal-done' && (<>
+              <div className="tag bg-neon self-start">Deal sealed</div>
+              <p className="text-base font-extrabold uppercase">Thank you for the deal, my friend! — Rattie Patty 🐭🤝</p>
+              <p className="font-medium text-xs">
+                {dealDoneInfo?.kind === 'gift'
+                  ? `You gifted ${dealDoneInfo.amount} PTS anonymously. Nobody will ever know it was you!`
+                  : `Your heist request for ${dealDoneInfo?.amount} PTS has been sent to the organizers for approval. Once approved, they’ll never know who robbed them!`}
+              </p>
+              <p className="font-medium text-xs bg-paper border-2 border-ink/20 rounded-lg px-2.5 py-2 italic">“{dealDoneInfo?.joke}”</p>
+              <div className="flex gap-2 pt-1">
+                <button className="btn bg-sun text-xs flex-1" onClick={() => { resetForms(); setPhase('hello'); }}>Another deal</button>
+                <button className="btn bg-white text-xs flex-1" onClick={close}>Bye, Rattie!</button>
+              </div>
+            </>)}
           </div>
           <span className="absolute -right-2 bottom-5 w-4 h-4 rotate-45 bg-white border-r-[3px] border-t-[3px] border-ink" />
         </div>
         <div className="relative shrink-0">
           {happy && <span key={sent} className="mascot-float absolute left-1/2 -top-2 -translate-x-1/2 border-2 border-ink bg-neon rounded px-2 py-0.5 font-mono font-bold text-sm shadow-b2">+{GOSSIP_POINTS}</span>}
+          {phase === 'deal-done' && dealDoneInfo?.kind === 'gift' && (
+            <span className="mascot-float absolute left-1/2 -top-2 -translate-x-1/2 border-2 border-ink bg-sun rounded px-2 py-0.5 font-mono font-bold text-sm shadow-b2">🎁 −{dealDoneInfo.amount}</span>
+          )}
           <img src={s.src} alt="" draggable={false} style={{ width: s.w * k, height: s.h * k }} />
         </div>
       </div>
@@ -257,7 +665,7 @@ export default function Mascot() {
   const p = place(scene);
   if (!scene || !p) return null;
   const pose = scene.walking ? RUN[frame % RUN.length] : scene.pose;
-  const sp = SPRITES[pose];
+  const sp = SPRITES[pose] || SPRITES.idle;
   const w = sp.w * S, h = sp.h * S;
   const edge = scene.kind === 'edge';
   const ty = edge ? 0 : scene.dive * BOX_H;

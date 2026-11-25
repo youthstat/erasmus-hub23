@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext.jsx';
 import { countryOf } from '../../hooks/useGame.js';
 import NamePicker from '../ui/NamePicker.jsx';
 import PointsDelta from '../ui/PointsDelta.jsx';
+import RattieBadge from '../ui/RattieBadge.jsx';
 import { useOscar } from '../../hooks/useOscar.js';
 import ModalShell from './ModalShell.jsx';
 
@@ -69,7 +70,7 @@ function Account() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-2xl md:text-3xl font-extrabold uppercase break-words">{profile.name}</div>
+          <div className="text-2xl md:text-3xl font-extrabold uppercase break-words">{profile.name}<RattieBadge event={profile.lastRattieEvent} /></div>
           <div className="font-mono text-sm text-mute">{countryOf(profile) || '—'}</div>
         </div>
         <div className="text-right">

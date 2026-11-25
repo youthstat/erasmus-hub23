@@ -18,6 +18,7 @@ import Footer from './components/layout/Footer.jsx';
 import CopyrightPage from './pages/CopyrightPage.jsx';
 import Gate from './components/layout/Gate.jsx';
 import Mascot from './components/mascot/Mascot.jsx';
+import PointNoticePopup from './components/mascot/PointNoticePopup.jsx';
 import ModalHost from './components/modals/ModalHost.jsx';
 import { useApp } from './context/AppContext.jsx';
 
@@ -76,6 +77,7 @@ export default function App() {
       </Routes>
       <Footer />
       <ModalHost />
+      <PointNoticePopup />
       <Mascot />
     </>
   );

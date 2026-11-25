@@ -3,6 +3,7 @@ import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { auth, firebaseConfigured } from '../firebase/config.js';
 import * as api from '../firebase/services.js';
 import * as games from '../firebase/games.js';
+import * as rattie from '../firebase/rattie.js';
 import { SEED_MISSIONS } from '../data/missions.js';
 import { ADMIN_PASSWORD } from '../config/settings.js';
 
@@ -24,6 +25,9 @@ export function AppProvider({ children }) {
   const [submissions, setSubmissions] = useState([]);
   const [pointsLog, setPointsLog] = useState([]);
   const [gossips, setGossips] = useState([]);
+  const [heistTasks, setHeistTasks] = useState([]);
+  const [stealRequests, setStealRequests] = useState([]);
+  const [myNotices, setMyNotices] = useState([]);
   const [homeHidden, setHomeHiddenState] = useState({});   // sections the admin switched off for participants
   const [homeReady, setHomeReady] = useState(false);
   const [error, setError] = useState('');
@@ -39,19 +43,33 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (!uid) return;
     const onErr = (e) => setError(e.message);
-    const offs = [api.subscribeMissions(setMissions, onErr), api.subscribeUsers(setUsers, onErr), api.subscribePointsLog(setPointsLog, onErr),
-      api.subscribeHomeConfig((h) => { setHomeHiddenState(h); setHomeReady(true); }, onErr)];
-    if (isAdmin) { offs.push(api.subscribeAllSubmissions(setSubmissions, onErr)); offs.push(api.subscribeGossips(setGossips, onErr)); }
-    else if (accountId) offs.push(api.subscribeMySubmissions(accountId, setSubmissions, onErr));
-    else setSubmissions([]);
-    if (!isAdmin) setGossips([]);
+    const offs = [
+      api.subscribeMissions(setMissions, onErr),
+      api.subscribeUsers(setUsers, onErr),
+      api.subscribePointsLog(setPointsLog, onErr),
+      api.subscribeHomeConfig((h) => { setHomeHiddenState(h); setHomeReady(true); }, onErr),
+      rattie.subscribeHeistTasks(setHeistTasks, onErr),
+    ];
+    if (isAdmin) {
+      offs.push(api.subscribeAllSubmissions(setSubmissions, onErr));
+      offs.push(api.subscribeGossips(setGossips, onErr));
+      offs.push(rattie.subscribeStealRequests(setStealRequests, onErr));
+    } else if (accountId) {
+      offs.push(api.subscribeMySubmissions(accountId, setSubmissions, onErr));
+    } else {
+      setSubmissions([]);
+    }
+    if (accountId) offs.push(rattie.subscribeMyNotices(accountId, setMyNotices, onErr));
+    else setMyNotices([]);
+    if (!isAdmin) { setGossips([]); setStealRequests([]); }
     return () => offs.forEach((o) => o());
   }, [uid, isAdmin, accountId]);
 
   const profile = useMemo(() => users.find((u) => u.id === accountId) || null, [users, accountId]);
   const rank = profile ? users.findIndex((u) => u.id === profile.id) + 1 : 0;
   const visibleMissions = useMemo(() => (isAdmin ? missions : missions.filter((m) => m.active !== false)), [missions, isAdmin]);
-  const pendingCount = submissions.filter((s) => s.status === 'pending').length;
+  const activeHeistTasks = useMemo(() => heistTasks.filter((t) => t.active !== false), [heistTasks]);
+  const pendingCount = submissions.filter((s) => s.status === 'pending').length + stealRequests.filter((r) => r.status === 'pending').length;
 
   // last point change of every participant (shown next to the score) + own history
   const lastChange = useMemo(() => {
@@ -95,6 +113,14 @@ export function AppProvider({ children }) {
   const run = async (fn) => { try { await fn(); } catch (e) { setError(e.message); } };
   const actions = {
     sendGossip: (text, showName, via) => api.sendGossip({ id: accountId, name: profile?.name || '' }, text, showName, via),   // throws: the mascot shows the message itself
+    giftPoints: (recipientId, amount) => rattie.giftPoints(accountId, recipientId, amount),
+    submitStealRequest: (payload) => rattie.submitStealRequest({ ...payload, thiefId: accountId, thiefName: profile?.name || '' }),
+    approveStealRequest: (req) => run(() => rattie.approveStealRequest(req)),
+    rejectStealRequest: (id) => run(() => rattie.rejectStealRequest(id)),
+    saveHeistTask: (data, id) => run(() => rattie.saveHeistTask(data, id)),
+    deleteHeistTask: (id) => run(() => rattie.removeHeistTask(id)),
+    seedHeistTasks: () => run(() => rattie.seedHeistTasks()),
+    dismissNotice: (id) => run(() => rattie.dismissNotice(id)),
     submitMission: (m, proof) => run(() => api.sendSubmission(submissionIdFor(m), {
       missionId: m.id, missionTitle: m.title, points: Number(m.points), userId: accountId, userName: profile.name,
       proofType: proof.type, proofValue: proof.value })),
@@ -124,6 +150,7 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       uid, accountId, gossips, isAdmin, homeHidden, homeReady, modal, users, profile, rank, lastChange, myHistory, submissions, pendingCount,
       missions: visibleMissions, allMissions: missions,
+      heistTasks: activeHeistTasks, allHeistTasks: heistTasks, stealRequests, myNotices,
       error, setError, firebaseConfigured, statusFor, openAuth, openMission, openThanks, openAccount, openEditor, openUserEditor,
       closeModal, tryAdminLogin, logoutAdmin, registerAccount, loginAccount, logoutAccount, ...actions,
     }}>

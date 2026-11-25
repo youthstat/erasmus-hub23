@@ -1,6 +1,7 @@
 import { useApp } from '../../context/AppContext.jsx';
 import { countryOf } from '../../hooks/useGame.js';
 import PointsDelta from '../ui/PointsDelta.jsx';
+import RattieBadge from '../ui/RattieBadge.jsx';
 
 export default function LeaderboardTable() {
   const { users, accountId, isAdmin, adjustPoints, removeUser, openUserEditor, lastChange, resetAccount } = useApp();
@@ -32,7 +33,7 @@ export default function LeaderboardTable() {
               <tr key={p.id} className={p.id === accountId ? 'bg-sun/25' : 'hover:bg-sun/20'}>
                 <td className="p-3 text-center font-bold">{String(i + 1).padStart(2, '0')}</td>
                 <td className="p-3">
-                  <div className="font-bold uppercase">{p.name} {p.id === accountId && <span className="tag bg-sun">YOU</span>}</div>
+                  <div className="font-bold uppercase">{p.name} {p.id === accountId && <span className="tag bg-sun">YOU</span>}<RattieBadge event={p.lastRattieEvent} /></div>
                   <div className="font-mono text-xs text-mute">{countryOf(p)}{isAdmin && <span> · {p.registered ? 'account ✓' : 'no account'}</span>}</div>
                 </td>
                 <td className="p-3 text-right text-xl font-bold">{(p.score ?? 0).toLocaleString('en-US')}<PointsDelta change={lastChange[p.id]} /></td>
